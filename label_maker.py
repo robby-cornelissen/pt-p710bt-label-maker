@@ -32,4 +32,5 @@ def switch_automatic_status_notification_mode(socket):
 def print_information_command(socket):
     # print to 24mm tape [1b 69 7a {84 00 18 00 aa 02 00 00 00 00}]
     #                                           ^^ ^^ ^^ ^^
+    #                                    Maybe: (len(data) >> 4).to_bytes(2, 'little')
     socket.send(b"\x1b\x69\x7a\x84\x00\x18\x00\xaa\x02\x00\x00\x00\x00")
