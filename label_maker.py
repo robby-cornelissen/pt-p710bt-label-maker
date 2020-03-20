@@ -237,7 +237,7 @@ def handle_status_information(status_information):
         print("Printer status")
         print("--------------")
         print("Media width: %dmm" % status_information[STATUS_OFFSET_MEDIA_WIDTH])    
-        print("Media type: %s" % MediaType(status_information[STATUS_OFFSET_MEDIA_TYPE]))
+        print("Media type: %s" % MediaType(status_information[STATUS_OFFSET_MEDIA_TYPE]).name)
         print("Tape color information: %s" % TapeColor(status_information[STATUS_OFFSET_TAPE_COLOR_INFORMATION]).name)
         print("Text color information: %s" % TextColor(status_information[STATUS_OFFSET_TEXT_COLOR_INFORMATION]).name)
         print()
