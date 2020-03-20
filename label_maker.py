@@ -153,8 +153,9 @@ def make_label(image_path, bt_address, bt_channel):
         send_raster_data(socket, data)
         send_print_command_with_feeding(socket)
 
-        status_information = receive_status_information_response(socket)
-        handle_status_information(status_information)
+        while True:
+            status_information = receive_status_information_response(socket)
+            handle_status_information(status_information)
 
 
 def send_invalidate(socket):
@@ -233,12 +234,18 @@ def receive_status_information_response(socket):
 
 def handle_status_information(status_information):
     def handle_reply_to_status_request(status_information):
+        print("Printer status")
+        print("--------------")
         print("Media width: %dmm" % status_information[STATUS_OFFSET_MEDIA_WIDTH])    
         print("Media type: %s" % MediaType(status_information[STATUS_OFFSET_MEDIA_TYPE]))
         print("Tape color information: %s" % TapeColor(status_information[STATUS_OFFSET_TAPE_COLOR_INFORMATION]).name)
         print("Text color information: %s" % TextColor(status_information[STATUS_OFFSET_TEXT_COLOR_INFORMATION]).name)
+        print()
 
     def handle_printing_completed(status_information):
+        print("Printing completed")
+        print("------------------")
+
         mode = Mode(status_information[STATUS_OFFSET_MODE])
 
         print("Mode: %s" % ", ".join([f.name for f in Mode if f in mode]))
@@ -246,26 +253,39 @@ def handle_status_information(status_information):
         sys.exit(0)
 
     def handle_error_occurred(status_information):
+        print("Error occurred")
+        print("--------------")
+
         error_information_1 = ErrorInformation1(status_information[STATUS_OFFSET_ERROR_INFORMATION_1])
         error_information_2 = ErrorInformation1(status_information[STATUS_OFFSET_ERROR_INFORMATION_2])
 
         print("Error information 1: %s" % ", ".join([f.name for f in ErrorInformation1 if f in error_information_1]))
         print("Error information 2: %s" % ", ".join([f.name for f in ErrorInformation2 if f in error_information_2]))
 
-        sys.exit("An error occurred")
+        sys.exit("An error has occurred; exiting program")
 
     def handle_turned_off(status_information):
+        print("Turned off")
+        print("----------")
+
         sys.exit("Device was turned off")
 
     def handle_notification(status_information):
+        print("Notification")
+        print("------------")
         print("Notification number: %s" % NotificationNumber(status_information[STATUS_OFFSET_NOTIFICATION_NUMBER]).name)
+        print()
 
     def handle_phase_change(status_information):
+        print("Phase changed")
+        print("-------------")
+
         phase_type = status_information[STATUS_OFFSET_PHASE_TYPE]
         phase_number = int.from_bytes(status_information[STATUS_OFFSET_PHASE_NUMBER:STATUS_OFFSET_PHASE_NUMBER + 2], "big")
 
         print("Phase type: %s" % PhaseType(phase_type).name)
         print("Phase number: %s" % (PhaseNumberPrintingState(phase_number) if phase_type == PhaseType.PRINTING_STATE else PhaseNumberEditingState(phase_number)).name)
+        print()
 
     handlers = {
         StatusType.REPLY_TO_STATUS_REQUEST: handle_reply_to_status_request,
