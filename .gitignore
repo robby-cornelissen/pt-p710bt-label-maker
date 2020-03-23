@@ -1,6 +1,6 @@
-.vscode
+.vscode/
 
-.venv
+.venv/
 
 *.pyc
 *.pdf
