@@ -46,7 +46,7 @@ The expected parameters are the following:
     $> bluetoothctl
     [bluetooth]# scan on
     [NEW] Device A0:66:10:CA:E9:22 PT-P710BT6522
-    [bluetooth]# pair A0:66:10:CA:E9:22
+    [bluetooth]# pair A0:66:10:CA:E7:42
     [bluetooth]# exit
     $>
     ```
@@ -64,4 +64,4 @@ In its current version, these are the two most important limitations of the appl
 Both of these might be addressed in future updates if the need arises.
 
 ## License
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0; vertical-align: middle;" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0; vertical-align: middle;" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a> This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
