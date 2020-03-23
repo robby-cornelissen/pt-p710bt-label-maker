@@ -1,4 +1,7 @@
+.vscode
+
 .venv
+
 *.pyc
 *.pdf
 *.png
