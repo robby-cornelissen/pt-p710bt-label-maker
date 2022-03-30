@@ -1,3 +1,8 @@
-PyBluez==0.23
+# as of 2022-03-30 the latest version of pybluez2 on PyPI is 0.44 from August 20, 2021;
+# that version uses setuptools "use_2to3=True" which was removed in setuptools v58.0.0,
+# therefore it won't install on modern Python versions
+# As of today, there's a fix in the git repo but not yet released to PyPI.
+# so we have to install from git.
+git+https://github.com/airgproducts/pybluez2.git@f01188c322d08452d4901aea99b754f43bb8bceb
 pypng==0.0.20
 packbits==0.6

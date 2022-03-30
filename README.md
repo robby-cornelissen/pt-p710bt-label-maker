@@ -4,29 +4,27 @@ This is a small application script to allow printing from the command line on th
 
 The script converts a PNG image to the raster format expected by the label printer, and communicates this to the printer over Bluetooth. 
 
-
 ## Rationale
 
 I wrote this script because of layout limitations encountered in the smartphone apps provided by the manufacturer. While they do make a desktop application available that seems to be more full-featured, it is only available for Microsoft Windows and Mac OS X, neither of which is my operating system of choice. In addition, I wanted the ability to execute label printing operations from the command-line to allow for easy integration with various pipelines.
 
 Similar scripts that exist for the older P-Touch Cube (PT-P300BT), as can be found [here](https://gist.github.com/stecman/ee1fd9a8b1b6f0fdd170ee87ba2ddafd) and [here](https://gist.github.com/dogtopus/64ae743825e42f2bb8ec79cea7ad2057), didn't completely suit my purpose, but provided helpful reference material.
 
-
 ## Requirements and installation
 
 The application script depends on the following packages:
 
- * [`pybluez`](https://github.com/pybluez/pybluez), for Bluetooth communication
+ * [`pybluez2`](https://github.com/airgproducts/pybluez2), for Bluetooth communication
  * [`pypng`](https://github.com/drj11/pypng), to read PNG images
  * [`packbits`](https://github.com/psd-tools/packbits), to compress data to TIFF format
 
 These can all be installed using `pip`:
+
 ```
 pip install -r requirements.txt
 ```
 
 Note that the installation of `pybluez` requires the presence of the [`bluez`](http://www.bluez.org/) development libraries and `libbluetooth` header files (`libbluetooth3-dev`). For most Linux distributions, these should be available through your regular package management system.
-
 
 ## Usage
 
@@ -53,7 +51,6 @@ The expected parameters are the following:
 
 * **`bt-channel`**  \
 The Bluetooth RFCOMM port number (optional, defaults to `1`).
-
 
 ## Limitations
 
