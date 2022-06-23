@@ -39,7 +39,7 @@ The expected parameters are the following:
  * **`image-path`**  \
  The path to the PNG file to be printed. The image needs to be 128 pixels high, while the width is variable depending on how long you want your label to be. The script bases itself on the PNG image's alpha channel, and prints all pixels that are not fully transparent (alpha channel value greater than 0).
  * **`bt-address`**  \
- The Bluetooth address of the printer. The `bluetoothctl` application (part of the aforementioned `bluez` stack) can be used to discover the printer's address, and pair with it from the command line:
+ The Bluetooth address of the printer. The `bluetoothctl` application (part of the aforementioned `bluez` stack; on some distributions such as Arch, it may be part of a separate package like `bluez-utils`) can be used to discover the printer's address, and pair with it from the command line:
     ```
     $> bluetoothctl
     [bluetooth]# scan on
@@ -49,7 +49,7 @@ The expected parameters are the following:
     $>
     ```
 
-* **`bt-channel`**  \
+ * **`bt-channel`**  \
 The Bluetooth RFCOMM port number (optional, defaults to `1`).
 
 ## Limitations
