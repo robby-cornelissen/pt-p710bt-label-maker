@@ -25,7 +25,7 @@ These can all be installed using `pip`:
 pip install -r requirements.txt
 ```
 
-Note that the installation of `pybluez` requires the presence of the [`bluez`](http://www.bluez.org/) development libraries. For most Linux distributions, these should be available through your regular package management system.
+Note that the installation of `pybluez` requires the presence of the [`bluez`](http://www.bluez.org/) development libraries and `libbluetooth` header files (`libbluetooth3-dev`). For most Linux distributions, these should be available through your regular package management system.
 
 
 ## Usage
