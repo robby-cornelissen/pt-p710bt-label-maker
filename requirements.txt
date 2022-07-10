@@ -3,6 +3,6 @@
 # therefore it won't install on modern Python versions
 # As of today, there's a fix in the git repo but not yet released to PyPI.
 # so we have to install from git.
-git+https://github.com/airgproducts/pybluez2.git@f01188c322d08452d4901aea99b754f43bb8bceb
+git+https://github.com/pybluez/pybluez.git@07ebef044195331a48bbb90a3acb911922048ba0
 pypng==0.0.20
 packbits==0.6
