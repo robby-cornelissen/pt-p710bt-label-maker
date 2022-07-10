@@ -7,3 +7,4 @@
 *.png
 *.xcf
 .idea/
+venv/
