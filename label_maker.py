@@ -1,5 +1,4 @@
 import sys
-import contextlib
 import bluetooth
 from label_rasterizer import encode_png, rasterize
 from constants import *
@@ -7,78 +6,73 @@ from constants import *
 SocketType = bluetooth.BluetoothSocket
 
 
-@contextlib.contextmanager
-def bt_socket_manager(*args, **kwargs):
-    socket: SocketType = bluetooth.BluetoothSocket(*args, **kwargs)
-    yield socket
-    socket.close()
-
-
 class PtP710LabelMaker:
 
-    def __init__(self):
-        pass
+    def __init__(self, bt_address: str, bt_channel: str):
+        self._socket: SocketType = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        self._socket.connect((bt_address, bt_channel))
 
-    def _send_invalidate(self, socket: SocketType):
+    def __del__(self):
+        self._socket.close()
+
+    def _send_invalidate(self):
         # send 100 null bytes
-        socket.send(b"\x00" * 100)
+        self._socket.send(b"\x00" * 100)
 
-    def _send_initialize(self, socket: SocketType):
+    def _send_initialize(self):
         # send [1B 40]
-        socket.send(b"\x1B\x40")
+        self._socket.send(b"\x1B\x40")
 
-    def _send_switch_dynamic_command_mode(self, socket: SocketType):
+    def _send_switch_dynamic_command_mode(self):
         # set dynamic command mode to "raster mode" [1B 69 61 {01}]
-        socket.send(b"\x1B\x69\x61\x01")
+        self._socket.send(b"\x1B\x69\x61\x01")
 
-    def _send_switch_automatic_status_notification_mode(
-        self, socket: SocketType
-    ):
+    def _send_switch_automatic_status_notification_mode(self):
         # set automatic status notification mode to "notify" [1B 69 21 {00}]
-        socket.send(b"\x1B\x69\x21\x00")
+        self._socket.send(b"\x1B\x69\x21\x00")
 
-    def _send_print_information_command(self, socket: SocketType, data_length: int):
+    def _send_print_information_command(self, data_length: int):
         # print to 24mm tape [1B 69 7A {84 00 18 00 <data length 4 bytes> 00 00}]
         # @TODO tape width is set here
-        socket.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
-        socket.send((data_length >> 4).to_bytes(4, 'little'))
-        socket.send(b"\x00\x00")
+        self._socket.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
+        self._socket.send((data_length >> 4).to_bytes(4, 'little'))
+        self._socket.send(b"\x00\x00")
 
-    def _send_various_mode_settings(self, socket: SocketType):
+    def _send_various_mode_settings(self):
         # set to auto-cut, no mirror printing [1B 69 4D {40}]
         # @TODO auto-cut is set here
-        socket.send(b"\x1B\x69\x4D")
-        socket.send(Mode.AUTO_CUT.to_bytes(1, "big"))
+        self._socket.send(b"\x1B\x69\x4D")
+        self._socket.send(Mode.AUTO_CUT.to_bytes(1, "big"))
 
-    def _send_advanced_mode_settings(self, socket: SocketType):
+    def _send_advanced_mode_settings(self):
         # set print chaining off [1B 69 4B {08}]
-        socket.send(b"\x1B\x69\x4B\x08")
+        self._socket.send(b"\x1B\x69\x4B\x08")
 
-    def _send_specify_margin_amount(self, socket: SocketType):
+    def _send_specify_margin_amount(self):
         # set margin (feed) amount to 0 [1B 69 64 {00 00}]
-        socket.send(b"\x1B\x69\x64\x00\x00")
+        self._socket.send(b"\x1B\x69\x64\x00\x00")
 
-    def _send_select_compression_mode(self, socket: SocketType):
+    def _send_select_compression_mode(self):
         # set to TIFF compression [4D {02}]
-        socket.send(b"\x4D\x02")
+        self._socket.send(b"\x4D\x02")
 
-    def _send_raster_data(self, socket: SocketType, data: bytearray):
+    def _send_raster_data(self, data: bytearray):
         # send all raster data lines
         # @TODO rasterize is called here
         for line in rasterize(data):
-            socket.send(bytes(line))
+            self._socket.send(bytes(line))
 
-    def _send_print_command_with_feeding(self, socket: SocketType):
+    def _send_print_command_with_feeding(self):
         # print and feed [1A]
-        socket.send(b"\x1A")
+        self._socket.send(b"\x1A")
 
-    def _send_status_information_request(self, socket: SocketType):
+    def _send_status_information_request(self):
         # request status information [1B 69 53]
-        socket.send(b"\x1B\x69\x53")
+        self._socket.send(b"\x1B\x69\x53")
 
-    def _receive_status_information_response(self, socket: SocketType):
+    def _receive_status_information_response(self):
         # receive status information
-        response = socket.recv(32)
+        response = self._socket.recv(32)
         # @TODO fix this
         if (len(response) != 32):
             sys.exit("Expected 32 bytes, but only received %d" % len(response))
@@ -185,30 +179,26 @@ class PtP710LabelMaker:
 
         handlers[status_type](status_information)
 
-    def make_label(self, image_path: str, bt_address: str, bt_channel: str):
+    def make_label(self, image_path: str):
         data: bytearray = encode_png(image_path)
-        with bt_socket_manager(bluetooth.RFCOMM) as socket:
-            socket.connect((bt_address, bt_channel))
-            self._send_invalidate(socket)
-            self._send_initialize(socket)
-            self._send_status_information_request(socket)
-
-            status_information = self._receive_status_information_response(socket)
+        self._send_invalidate()
+        self._send_initialize()
+        self._send_status_information_request()
+        status_information = self._receive_status_information_response()
+        self._handle_status_information(status_information)
+        self._send_switch_dynamic_command_mode()
+        self._send_switch_automatic_status_notification_mode()
+        self._send_print_information_command(len(data))
+        self._send_various_mode_settings()
+        self._send_advanced_mode_settings()
+        self._send_specify_margin_amount()
+        self._send_select_compression_mode()
+        self._send_raster_data(data)
+        self._send_print_command_with_feeding()
+        # @TODO fix this infinite loop
+        while True:
+            status_information = self._receive_status_information_response()
             self._handle_status_information(status_information)
-
-            self._send_switch_dynamic_command_mode(socket)
-            self._send_switch_automatic_status_notification_mode(socket)
-            self._send_print_information_command(socket, len(data))
-            self._send_various_mode_settings(socket)
-            self._send_advanced_mode_settings(socket)
-            self._send_specify_margin_amount(socket)
-            self._send_select_compression_mode(socket)
-            self._send_raster_data(socket, data)
-            self._send_print_command_with_feeding(socket)
-
-            while True:
-                status_information = self._receive_status_information_response(socket)
-                self._handle_status_information(status_information)
 
 
 def main(*args):
@@ -220,7 +210,7 @@ def main(*args):
     bt_address = args[2]
     bt_channel = args[3] if len(args) > 3 else 1
 
-    PtP710LabelMaker().make_label(image_path, bt_address, bt_channel)
+    PtP710LabelMaker(bt_address, bt_channel).make_label(image_path)
 
 
 if __name__ == "__main__":
