@@ -1,4 +1,5 @@
 import sys
+import argparse
 import bluetooth
 from label_rasterizer import encode_png, rasterize
 from constants import (
@@ -206,17 +207,27 @@ class PtP710LabelMaker:
             self._handle_status_information(status_information)
 
 
-def main(*args):
-    if len(args) < 3:
-        print("Usage: %s <image-path> <bt-address> [bt-channel]" % args[0])
-        sys.exit(1)
-
-    image_path = args[1]
-    bt_address = args[2]
-    bt_channel = args[3] if len(args) > 3 else 1
-
-    PtP710LabelMaker(bt_address, bt_channel).make_label(image_path)
+def main(argv):
+    p = argparse.ArgumentParser(
+        description='Brother PT-P710BT Label Maker controller'
+    )
+    p.add_argument(
+        '-C', '--bt-channel', dest='bt_channel', action='store', type=int,
+        default=1, help='BlueTooth Channel (default: 1)'
+    )
+    p.add_argument(
+        'IMAGE_PATH', action='store', type=str, help='Path to image to print'
+    )
+    p.add_argument(
+        'BT_ADDRESS', action='store', type=str,
+        help='BlueTooth device (MAC) address to connect to; must '
+             'already be paired'
+    )
+    args = p.parse_args(argv)
+    PtP710LabelMaker(
+        args.BT_ADDRESS, args.bt_channel
+    ).make_label(args.IMAGE_PATH)
 
 
 if __name__ == "__main__":
-    main(*sys.argv)
+    main(sys.argv[1:])
