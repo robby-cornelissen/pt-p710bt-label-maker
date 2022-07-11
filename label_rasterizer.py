@@ -26,7 +26,7 @@ def rasterize(encoded_image_data):
         yield buffer
 
 
-def encode_png(image_path):
+def encode_png(image_path: str) -> bytearray:
     width, height, rows, info = png.Reader(filename=image_path).asRGBA()
 
     if height != IMAGE_HEIGHT:
