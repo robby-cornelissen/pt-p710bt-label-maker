@@ -63,6 +63,7 @@ class PtP710LabelMaker:
     def _send_raster_data(self, data: bytearray):
         # send all raster data lines
         # @TODO rasterize is called here
+        line: bytearray
         for line in rasterize(data):
             self._socket.send(bytes(line))
 
@@ -74,17 +75,17 @@ class PtP710LabelMaker:
         # request status information [1B 69 53]
         self._socket.send(b"\x1B\x69\x53")
 
-    def _receive_status_information_response(self):
+    def _receive_status_information_response(self) -> bytes:
         # receive status information
-        response = self._socket.recv(32)
-        # @TODO fix this
-        if (len(response) != 32):
+        response: bytes = self._socket.recv(32)
+        if len(response) != 32:
+            # @TODO raise an exception
             sys.exit("Expected 32 bytes, but only received %d" % len(response))
         return response
 
-    def _handle_status_information(self, status_information):
+    def _handle_status_information(self, status_information: bytes):
         # @TODO completely rewrite this using a class or something
-        def handle_reply_to_status_request(status_information):
+        def handle_reply_to_status_request(status_information: bytes):
             print("Printer status")
             print("--------------")
             print(
@@ -109,7 +110,7 @@ class PtP710LabelMaker:
             )
             print()
 
-        def handle_printing_completed(status_information):
+        def handle_printing_completed(status_information: bytes):
             print("Printing completed")
             print("------------------")
             mode = Mode(status_information[StatusOffset.MODE])
@@ -117,7 +118,7 @@ class PtP710LabelMaker:
             # @TODO fix this
             sys.exit(0)
 
-        def handle_error_occurred(status_information):
+        def handle_error_occurred(status_information: bytes):
             print("Error occurred")
             print("--------------")
             error_information_1 = ErrorInformation1(
@@ -145,7 +146,7 @@ class PtP710LabelMaker:
             # @TODO fix this
             sys.exit("Device was turned off")
 
-        def handle_notification(status_information):
+        def handle_notification(status_information: bytes):
             print("Notification")
             print("------------")
             print(
@@ -155,7 +156,7 @@ class PtP710LabelMaker:
             )
             print()
 
-        def handle_phase_change(status_information):
+        def handle_phase_change(status_information: bytes):
             print("Phase changed")
             print("-------------")
             phase_type = status_information[StatusOffset.PHASE_TYPE]
@@ -188,7 +189,7 @@ class PtP710LabelMaker:
         self._send_invalidate()
         self._send_initialize()
         self._send_status_information_request()
-        status_information = self._receive_status_information_response()
+        status_information: bytes = self._receive_status_information_response()
         self._handle_status_information(status_information)
         self._send_switch_dynamic_command_mode()
         self._send_switch_automatic_status_notification_mode()
@@ -201,7 +202,7 @@ class PtP710LabelMaker:
         self._send_print_command_with_feeding()
         # @TODO fix this infinite loop
         while True:
-            status_information = self._receive_status_information_response()
+            status_information: bytes = self._receive_status_information_response()
             self._handle_status_information(status_information)
 
 
