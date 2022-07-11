@@ -13,7 +13,7 @@ STATUS_OFFSET_MODE = 15
 STATUS_OFFSET_MEDIA_LENGTH = 17
 STATUS_OFFSET_STATUS_TYPE = 18
 STATUS_OFFSET_PHASE_TYPE = 19
-STATUS_OFFSET_PHASE_NUMBER= 20
+STATUS_OFFSET_PHASE_NUMBER = 20
 STATUS_OFFSET_NOTIFICATION_NUMBER = 22
 STATUS_OFFSET_TAPE_COLOR_INFORMATION = 24
 STATUS_OFFSET_TEXT_COLOR_INFORMATION = 25
@@ -63,6 +63,7 @@ class PhaseType(IntEnum):
 class PhaseNumberEditingState(IntEnum):
     EDITING_STATE = 0x0000
     FEED = 0x0001
+
 
 class PhaseNumberPrintingState(IntEnum):
     PRINTING = 0x0000
@@ -300,6 +301,7 @@ def handle_status_information(status_information):
 
     handlers[status_type](status_information)
 
+
 def main(*args):
     if len(args) < 3:
         print("Usage: %s <image-path> <bt-address> [bt-channel]" % args[0])
@@ -312,5 +314,5 @@ def main(*args):
     make_label(image_path, bt_address, bt_channel)
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
     main(*sys.argv)
