@@ -97,7 +97,7 @@ class TapeColor(IntEnum):
     LIME_GREEN_S = 0x52
     YELLOW_F = 0x60
     PINK_F = 0x61
-    BLUE_F= 0x62
+    BLUE_F = 0x62
     WHITE_HEAT_SHRINK_TUBE = 0x70
     WHITE_FLEX_ID = 0x90
     YELLOW_FLEX_ID = 0x91
