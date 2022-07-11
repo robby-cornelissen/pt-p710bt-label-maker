@@ -24,3 +24,12 @@ class InvalidImageHeightException(ValueError):
             f'Supplied image has invalid height. An image {required_height} px '
             f'high is requred, but supplied image is {actual_height} px high.'
         )
+
+
+class InvalidStatusCodeException(ValueError):
+
+    def __init__(self, status_code: int):
+        self.status_code: int = status_code
+        super(InvalidStatusCodeException, self).__init__(
+            f'ERROR: Printer responded with unknown status type {status_code:x}'
+        )

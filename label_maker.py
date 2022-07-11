@@ -11,7 +11,8 @@ from constants import (
     StatusType, TapeColor, TextColor
 )
 from exceptions import (
-    DeviceTurnedOffException, InvalidStatusResponseException
+    DeviceTurnedOffException, InvalidStatusResponseException,
+    InvalidStatusCodeException
 )
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
@@ -20,6 +21,134 @@ logger = logging.getLogger()
 
 
 SocketType = bluetooth.BluetoothSocket
+
+
+class StatusMessage:
+
+    def __init__(self, status_response: bytes):
+        self._raw_response: bytes = status_response
+        if len(self._raw_response) != 32:
+            raise InvalidStatusResponseException(len(self._raw_response))
+        self.status_type: int = self._raw_response[StatusOffset.STATUS_TYPE]
+        self.type_name: str = StatusType(self.status_type).name
+        logger.debug(
+            'Parsing status response of type %s (%d)',
+            self.type_name, self.status_type
+        )
+        self.is_final_status: bool = False
+        # @TODO Fix up the rest of these to provide the information programmatically, and maybe use subclasses...
+        if self.status_type == StatusType.TURNED_OFF:
+            self.is_final_status = True
+            raise DeviceTurnedOffException()
+        elif self.status_type == StatusType.REPLY_TO_STATUS_REQUEST:
+            self.handle_reply_to_status_request(self._raw_response)
+        elif self.status_type == StatusType.PRINTING_COMPLETED:
+            self.handle_printing_completed(self._raw_response)
+        elif self.status_type == StatusType.ERROR_OCCURRED:
+            self.handle_error_occurred(self._raw_response)
+        elif self.status_type == StatusType.NOTIFICATION:
+            self.handle_notification(self._raw_response)
+        elif self.status_type == StatusType.PHASE_CHANGE:
+            self.handle_phase_change(self._raw_response)
+        else:
+            raise InvalidStatusCodeException(self.status_type)
+
+    def handle_reply_to_status_request(self, status_information: bytes):
+        print("Printer status")
+        print("--------------")
+        print(
+            "Media width: %dmm" % status_information[
+                StatusOffset.MEDIA_WIDTH
+            ]
+        )
+        print(
+            "Media type: %s" % MediaType(
+                status_information[StatusOffset.MEDIA_TYPE]
+            ).name
+        )
+        print(
+            "Tape color information: %s" % TapeColor(
+                status_information[StatusOffset.TAPE_COLOR_INFORMATION]
+            ).name
+        )
+        print(
+            "Text color information: %s" % TextColor(
+                status_information[StatusOffset.TEXT_COLOR_INFORMATION]
+            ).name
+        )
+        print()
+
+    def handle_printing_completed(self, status_information: bytes):
+        print("Printing completed")
+        print("------------------")
+        mode = Mode(status_information[StatusOffset.MODE])
+        logger.debug('Printing completed; mode: %x', status_information[StatusOffset.MODE])
+        print("Mode: %s" % ", ".join([f.name for f in Mode if f in mode]))
+        # @TODO fix this
+        sys.exit(0)
+
+    def handle_error_occurred(self, status_information: bytes):
+        print("Error occurred")
+        print("--------------")
+        logger.debug(
+            'Error occurred. ERROR_INFORMATION_1=%x ERROR_INFORMATION_2=%s',
+            status_information[StatusOffset.ERROR_INFORMATION_1],
+            status_information[StatusOffset.ERROR_INFORMATION_2]
+        )
+        error_information_1 = ErrorInformation1(
+            status_information[StatusOffset.ERROR_INFORMATION_1]
+        )
+        error_information_2 = ErrorInformation1(
+            status_information[StatusOffset.ERROR_INFORMATION_2]
+        )
+        print(
+            "Error information 1: %s" % ", ".join([
+                f.name for f in ErrorInformation1 if f in error_information_1
+            ])
+        )
+        print(
+            "Error information 2: %s" % ", ".join([
+                f.name for f in ErrorInformation2 if f in error_information_2
+            ])
+        )
+        # @TODO replace with custom status error exceptions
+        raise RuntimeError(
+            'Printer status error. '
+            '@TODO replace this with custom exceptions'
+        )
+
+    def handle_notification(self, status_information: bytes):
+        print("Notification")
+        print("------------")
+        logger.debug(
+            'Got notification: %x',
+            status_information[StatusOffset.NOTIFICATION_NUMBER]
+        )
+        print(
+            "Notification number: %s" % NotificationNumber(
+                status_information[StatusOffset.NOTIFICATION_NUMBER]
+            ).name
+        )
+        print()
+
+    def handle_phase_change(self, status_information: bytes):
+        print("Phase changed")
+        print("-------------")
+        phase_type = status_information[StatusOffset.PHASE_TYPE]
+        phase_number = int.from_bytes(
+            status_information[StatusOffset.PHASE_NUMBER:StatusOffset.PHASE_NUMBER + 2], "big"
+        )
+        logger.debug(
+            'Phase change; phase_type=%x, phase_number=%x',
+            phase_type, phase_number
+        )
+        print("Phase type: %s" % PhaseType(phase_type).name)
+        print(
+            "Phase number: %s" % (
+                PhaseNumberPrintingState(phase_number) if phase_type == PhaseType.PRINTING_STATE else PhaseNumberEditingState(phase_number)
+            ).name
+        )
+        print()
 
 
 class PtP710LabelMaker:
@@ -108,126 +237,23 @@ class PtP710LabelMaker:
         logger.debug('Request status information')
         self._socket.send(b"\x1B\x69\x53")
 
-    def _receive_status_information_response(self) -> bytes:
+    def _receive_status_information_response(self) -> StatusMessage:
         # receive status information
         response: bytes = self._socket.recv(32)
         logger.debug(
             'Received %d-byte status response ; %x', len(response), response
         )
-        if len(response) != 32:
-            raise InvalidStatusResponseException(len(response))
-        return response
+        return StatusMessage(response)
 
-    def _handle_status_information(self, status_information: bytes):
-        # @TODO completely rewrite this using a class or something
-        def handle_reply_to_status_request(status_information: bytes):
-            print("Printer status")
-            print("--------------")
-            print(
-                "Media width: %dmm" % status_information[
-                    StatusOffset.MEDIA_WIDTH
-                ]
-            )
-            print(
-                "Media type: %s" % MediaType(
-                    status_information[StatusOffset.MEDIA_TYPE]
-                ).name
-            )
-            print(
-                "Tape color information: %s" % TapeColor(
-                    status_information[StatusOffset.TAPE_COLOR_INFORMATION]
-                ).name
-            )
-            print(
-                "Text color information: %s" % TextColor(
-                    status_information[StatusOffset.TEXT_COLOR_INFORMATION]
-                ).name
-            )
-            print()
-
-        def handle_printing_completed(status_information: bytes):
-            print("Printing completed")
-            print("------------------")
-            mode = Mode(status_information[StatusOffset.MODE])
-            print("Mode: %s" % ", ".join([f.name for f in Mode if f in mode]))
-            # @TODO fix this
-            sys.exit(0)
-
-        def handle_error_occurred(status_information: bytes):
-            print("Error occurred")
-            print("--------------")
-            error_information_1 = ErrorInformation1(
-                status_information[StatusOffset.ERROR_INFORMATION_1]
-            )
-            error_information_2 = ErrorInformation1(
-                status_information[StatusOffset.ERROR_INFORMATION_2]
-            )
-            print(
-                "Error information 1: %s" % ", ".join([
-                    f.name for f in ErrorInformation1 if f in error_information_1
-                ])
-            )
-            print(
-                "Error information 2: %s" % ", ".join([
-                    f.name for f in ErrorInformation2 if f in error_information_2
-                ])
-            )
-            # @TODO replace with custom status error exceptions
-            raise RuntimeError(
-                'Printer status error. '
-                '@TODO replace this with custom exceptions'
-            )
-
-        def handle_turned_off(_):
-            raise DeviceTurnedOffException()
-
-        def handle_notification(status_information: bytes):
-            print("Notification")
-            print("------------")
-            print(
-                "Notification number: %s" % NotificationNumber(
-                    status_information[StatusOffset.NOTIFICATION_NUMBER]
-                ).name
-            )
-            print()
-
-        def handle_phase_change(status_information: bytes):
-            print("Phase changed")
-            print("-------------")
-            phase_type = status_information[StatusOffset.PHASE_TYPE]
-            phase_number = int.from_bytes(
-                status_information[StatusOffset.PHASE_NUMBER:StatusOffset.PHASE_NUMBER + 2], "big"
-            )
-            print("Phase type: %s" % PhaseType(phase_type).name)
-            print(
-                "Phase number: %s" % (
-                    PhaseNumberPrintingState(phase_number) if phase_type == PhaseType.PRINTING_STATE else PhaseNumberEditingState(phase_number)
-                ).name
-            )
-            print()
-
-        handlers = {
-            StatusType.REPLY_TO_STATUS_REQUEST: handle_reply_to_status_request,
-            StatusType.PRINTING_COMPLETED: handle_printing_completed,
-            StatusType.ERROR_OCCURRED: handle_error_occurred,
-            StatusType.TURNED_OFF: handle_turned_off,
-            StatusType.NOTIFICATION: handle_notification,
-            StatusType.PHASE_CHANGE: handle_phase_change
-        }
-
-        status_type = status_information[StatusOffset.STATUS_TYPE]
-
-        handlers[status_type](status_information)
-
-    def make_label(self, image_path: str):
+    def print_image(self, image_path: str):
         logger.debug('Encoding PNG image at %s', image_path)
         data: bytearray = encode_png(image_path)
         logger.debug('Encoded to bytearray of length %d', len(data))
         self._send_invalidate()
         self._send_initialize()
         self._send_status_information_request()
-        status_information: bytes = self._receive_status_information_response()
-        self._handle_status_information(status_information)
+        status: StatusMessage = self._receive_status_information_response()
+        logger.info('Status: %s', status)
         self._send_switch_dynamic_command_mode()
         self._send_switch_automatic_status_notification_mode()
         self._send_print_information_command(len(data))
@@ -239,8 +265,8 @@ class PtP710LabelMaker:
         self._send_print_command_with_feeding()
         # @TODO fix this infinite loop
         while True:
-            status_information: bytes = self._receive_status_information_response()
-            self._handle_status_information(status_information)
+            status: StatusMessage = self._receive_status_information_response()
+            logger.info('Status: %s', status)
 
 
 def set_log_info():
@@ -300,7 +326,7 @@ def main(argv):
         set_log_info()
     PtP710LabelMaker(
         args.BT_ADDRESS, args.bt_channel
-    ).make_label(args.IMAGE_PATH)
+    ).print_image(args.IMAGE_PATH)
 
 
 if __name__ == "__main__":
