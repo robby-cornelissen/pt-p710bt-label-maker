@@ -1,8 +1,10 @@
 import sys
+from typing import Iterator, Any, Dict, List
+
 import png
 import packbits
 
-from typing import Iterator, Any, Dict, List
+from exceptions import InvalidImageHeightException
 
 IMAGE_HEIGHT: int = 128
 CHUNK_SIZE: int = 16
@@ -34,8 +36,7 @@ def encode_png(image_path: str) -> bytearray:
     width, height, rows, info = png.Reader(filename=image_path).asRGBA()
 
     if height != IMAGE_HEIGHT:
-        # @TODO raise exception
-        sys.exit("Image height is %d pixels, %d required" % (height, IMAGE_HEIGHT))
+        raise InvalidImageHeightException(IMAGE_HEIGHT, height)
 
     # get all the alpha channel values, rotate 90 degrees and flip horizontally
     data = list(zip(*[row[3::4] for row in rows]))

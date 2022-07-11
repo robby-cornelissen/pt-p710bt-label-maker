@@ -10,6 +10,9 @@ from constants import (
     PhaseNumberEditingState, PhaseNumberPrintingState, PhaseType, StatusOffset,
     StatusType, TapeColor, TextColor
 )
+from exceptions import (
+    DeviceTurnedOffException, InvalidStatusResponseException
+)
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
@@ -112,8 +115,7 @@ class PtP710LabelMaker:
             'Received %d-byte status response ; %x', len(response), response
         )
         if len(response) != 32:
-            # @TODO raise an exception
-            sys.exit("Expected 32 bytes, but only received %d" % len(response))
+            raise InvalidStatusResponseException(len(response))
         return response
 
     def _handle_status_information(self, status_information: bytes):
@@ -170,14 +172,14 @@ class PtP710LabelMaker:
                     f.name for f in ErrorInformation2 if f in error_information_2
                 ])
             )
-            # @TODO fix this
-            sys.exit("An error has occurred; exiting program")
+            # @TODO replace with custom status error exceptions
+            raise RuntimeError(
+                'Printer status error. '
+                '@TODO replace this with custom exceptions'
+            )
 
         def handle_turned_off(_):
-            print("Turned off")
-            print("----------")
-            # @TODO fix this
-            sys.exit("Device was turned off")
+            raise DeviceTurnedOffException()
 
         def handle_notification(status_information: bytes):
             print("Notification")
