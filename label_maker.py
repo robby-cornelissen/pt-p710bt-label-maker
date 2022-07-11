@@ -1,7 +1,11 @@
 import sys
 import bluetooth
 from label_rasterizer import encode_png, rasterize
-from constants import *
+from constants import (
+    ErrorInformation1, ErrorInformation2, MediaType, Mode, NotificationNumber,
+    PhaseNumberEditingState, PhaseNumberPrintingState, PhaseType, StatusOffset,
+    StatusType, TapeColor, TextColor
+)
 
 SocketType = bluetooth.BluetoothSocket
 
@@ -85,22 +89,22 @@ class PtP710LabelMaker:
             print("--------------")
             print(
                 "Media width: %dmm" % status_information[
-                    STATUS_OFFSET_MEDIA_WIDTH
+                    StatusOffset.MEDIA_WIDTH
                 ]
             )
             print(
                 "Media type: %s" % MediaType(
-                    status_information[STATUS_OFFSET_MEDIA_TYPE]
+                    status_information[StatusOffset.MEDIA_TYPE]
                 ).name
             )
             print(
                 "Tape color information: %s" % TapeColor(
-                    status_information[STATUS_OFFSET_TAPE_COLOR_INFORMATION]
+                    status_information[StatusOffset.TAPE_COLOR_INFORMATION]
                 ).name
             )
             print(
                 "Text color information: %s" % TextColor(
-                    status_information[STATUS_OFFSET_TEXT_COLOR_INFORMATION]
+                    status_information[StatusOffset.TEXT_COLOR_INFORMATION]
                 ).name
             )
             print()
@@ -108,7 +112,7 @@ class PtP710LabelMaker:
         def handle_printing_completed(status_information):
             print("Printing completed")
             print("------------------")
-            mode = Mode(status_information[STATUS_OFFSET_MODE])
+            mode = Mode(status_information[StatusOffset.MODE])
             print("Mode: %s" % ", ".join([f.name for f in Mode if f in mode]))
             # @TODO fix this
             sys.exit(0)
@@ -117,10 +121,10 @@ class PtP710LabelMaker:
             print("Error occurred")
             print("--------------")
             error_information_1 = ErrorInformation1(
-                status_information[STATUS_OFFSET_ERROR_INFORMATION_1]
+                status_information[StatusOffset.ERROR_INFORMATION_1]
             )
             error_information_2 = ErrorInformation1(
-                status_information[STATUS_OFFSET_ERROR_INFORMATION_2]
+                status_information[StatusOffset.ERROR_INFORMATION_2]
             )
             print(
                 "Error information 1: %s" % ", ".join([
@@ -146,7 +150,7 @@ class PtP710LabelMaker:
             print("------------")
             print(
                 "Notification number: %s" % NotificationNumber(
-                    status_information[STATUS_OFFSET_NOTIFICATION_NUMBER]
+                    status_information[StatusOffset.NOTIFICATION_NUMBER]
                 ).name
             )
             print()
@@ -154,9 +158,9 @@ class PtP710LabelMaker:
         def handle_phase_change(status_information):
             print("Phase changed")
             print("-------------")
-            phase_type = status_information[STATUS_OFFSET_PHASE_TYPE]
+            phase_type = status_information[StatusOffset.PHASE_TYPE]
             phase_number = int.from_bytes(
-                status_information[STATUS_OFFSET_PHASE_NUMBER:STATUS_OFFSET_PHASE_NUMBER + 2], "big"
+                status_information[StatusOffset.PHASE_NUMBER:StatusOffset.PHASE_NUMBER + 2], "big"
             )
             print("Phase type: %s" % PhaseType(phase_type).name)
             print(
@@ -175,7 +179,7 @@ class PtP710LabelMaker:
             StatusType.PHASE_CHANGE: handle_phase_change
         }
 
-        status_type = status_information[STATUS_OFFSET_STATUS_TYPE]
+        status_type = status_information[StatusOffset.STATUS_TYPE]
 
         handlers[status_type](status_information)
 
