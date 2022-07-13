@@ -14,7 +14,7 @@ Similar scripts that exist for the older P-Touch Cube (PT-P300BT), as can be fou
 
 The application script depends on the following packages:
 
- * [`pybluez`](https://github.com/pybluez/pybluez), for Bluetooth communication
+ * [`pybluez`](https://github.com/pybluez/pybluez), for Bluetooth communication. **NOTE** that as of July 13, 2022 this project requires changes that have been merged to master in the [pybluez GitHub repo](https://github.com/pybluez/pybluez) since the `0.23` release but have not yet been released [on PyPI](https://pypi.org/project/PyBluez/). As a result, this dependency must be installed from git.
  * [`pypng`](https://github.com/drj11/pypng), to read PNG images
  * [`packbits`](https://github.com/psd-tools/packbits), to compress data to TIFF format
 

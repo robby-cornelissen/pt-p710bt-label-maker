@@ -5,150 +5,20 @@ import logging
 import bluetooth
 
 from label_rasterizer import encode_png, rasterize
-from constants import (
-    ErrorInformation1, ErrorInformation2, MediaType, Mode, NotificationNumber,
-    PhaseNumberEditingState, PhaseNumberPrintingState, PhaseType, StatusOffset,
-    StatusType, TapeColor, TextColor
-)
 from exceptions import (
     DeviceTurnedOffException, InvalidStatusResponseException,
     InvalidStatusCodeException
+)
+from status_message import (
+    Mode, RawStatusMessage, ReplyToStatusRequest, PrintingCompleted,
+    Notification, PhaseChange, StatusMessage
 )
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
 logger = logging.getLogger()
 
-
 SocketType = bluetooth.BluetoothSocket
-
-
-class StatusMessage:
-
-    def __init__(self, status_response: bytes):
-        self._raw_response: bytes = status_response
-        if len(self._raw_response) != 32:
-            raise InvalidStatusResponseException(len(self._raw_response))
-        self.status_type: int = self._raw_response[StatusOffset.STATUS_TYPE]
-        self.type_name: str = StatusType(self.status_type).name
-        logger.debug(
-            'Parsing status response of type %s (%d)',
-            self.type_name, self.status_type
-        )
-        self.is_final_status: bool = False
-        # @TODO Fix up the rest of these to provide the information programmatically, and maybe use subclasses...
-        if self.status_type == StatusType.TURNED_OFF:
-            self.is_final_status = True
-            raise DeviceTurnedOffException()
-        elif self.status_type == StatusType.REPLY_TO_STATUS_REQUEST:
-            self.handle_reply_to_status_request(self._raw_response)
-        elif self.status_type == StatusType.PRINTING_COMPLETED:
-            self.handle_printing_completed(self._raw_response)
-        elif self.status_type == StatusType.ERROR_OCCURRED:
-            self.handle_error_occurred(self._raw_response)
-        elif self.status_type == StatusType.NOTIFICATION:
-            self.handle_notification(self._raw_response)
-        elif self.status_type == StatusType.PHASE_CHANGE:
-            self.handle_phase_change(self._raw_response)
-        else:
-            raise InvalidStatusCodeException(self.status_type)
-
-    def handle_reply_to_status_request(self, status_information: bytes):
-        print("Printer status")
-        print("--------------")
-        print(
-            "Media width: %dmm" % status_information[
-                StatusOffset.MEDIA_WIDTH
-            ]
-        )
-        print(
-            "Media type: %s" % MediaType(
-                status_information[StatusOffset.MEDIA_TYPE]
-            ).name
-        )
-        print(
-            "Tape color information: %s" % TapeColor(
-                status_information[StatusOffset.TAPE_COLOR_INFORMATION]
-            ).name
-        )
-        print(
-            "Text color information: %s" % TextColor(
-                status_information[StatusOffset.TEXT_COLOR_INFORMATION]
-            ).name
-        )
-        print()
-
-    def handle_printing_completed(self, status_information: bytes):
-        print("Printing completed")
-        print("------------------")
-        mode = Mode(status_information[StatusOffset.MODE])
-        logger.debug('Printing completed; mode: %x', status_information[StatusOffset.MODE])
-        print("Mode: %s" % ", ".join([f.name for f in Mode if f in mode]))
-        # @TODO fix this
-        sys.exit(0)
-
-    def handle_error_occurred(self, status_information: bytes):
-        print("Error occurred")
-        print("--------------")
-        logger.debug(
-            'Error occurred. ERROR_INFORMATION_1=%x ERROR_INFORMATION_2=%s',
-            status_information[StatusOffset.ERROR_INFORMATION_1],
-            status_information[StatusOffset.ERROR_INFORMATION_2]
-        )
-        error_information_1 = ErrorInformation1(
-            status_information[StatusOffset.ERROR_INFORMATION_1]
-        )
-        error_information_2 = ErrorInformation1(
-            status_information[StatusOffset.ERROR_INFORMATION_2]
-        )
-        print(
-            "Error information 1: %s" % ", ".join([
-                f.name for f in ErrorInformation1 if f in error_information_1
-            ])
-        )
-        print(
-            "Error information 2: %s" % ", ".join([
-                f.name for f in ErrorInformation2 if f in error_information_2
-            ])
-        )
-        # @TODO replace with custom status error exceptions
-        raise RuntimeError(
-            'Printer status error. '
-            '@TODO replace this with custom exceptions'
-        )
-
-    def handle_notification(self, status_information: bytes):
-        print("Notification")
-        print("------------")
-        logger.debug(
-            'Got notification: %x',
-            status_information[StatusOffset.NOTIFICATION_NUMBER]
-        )
-        print(
-            "Notification number: %s" % NotificationNumber(
-                status_information[StatusOffset.NOTIFICATION_NUMBER]
-            ).name
-        )
-        print()
-
-    def handle_phase_change(self, status_information: bytes):
-        print("Phase changed")
-        print("-------------")
-        phase_type = status_information[StatusOffset.PHASE_TYPE]
-        phase_number = int.from_bytes(
-            status_information[StatusOffset.PHASE_NUMBER:StatusOffset.PHASE_NUMBER + 2], "big"
-        )
-        logger.debug(
-            'Phase change; phase_type=%x, phase_number=%x',
-            phase_type, phase_number
-        )
-        print("Phase type: %s" % PhaseType(phase_type).name)
-        print(
-            "Phase number: %s" % (
-                PhaseNumberPrintingState(phase_number) if phase_type == PhaseType.PRINTING_STATE else PhaseNumberEditingState(phase_number)
-            ).name
-        )
-        print()
 
 
 class PtP710LabelMaker:
@@ -243,7 +113,40 @@ class PtP710LabelMaker:
         logger.debug(
             'Received %d-byte status response ; %x', len(response), response
         )
-        return StatusMessage(response)
+        raw: RawStatusMessage = RawStatusMessage(response)
+        logger.debug('Got status message: %s', raw)
+        if raw.status_type == RawStatusMessage.StatusType.TURNED_OFF:
+            raise DeviceTurnedOffException()
+        elif raw.status_type == RawStatusMessage.StatusType.REPLY_TO_STATUS_REQUEST:
+            return ReplyToStatusRequest(raw)
+        elif raw.status_type == RawStatusMessage.StatusType.PRINTING_COMPLETED:
+            return PrintingCompleted(raw)
+        elif raw.status_type == RawStatusMessage.StatusType.NOTIFICATION:
+            return Notification(raw)
+        elif raw.status_type == RawStatusMessage.StatusType.PHASE_CHANGE:
+            return PhaseChange(raw)
+        elif raw.status_type != RawStatusMessage.StatusType.ERROR_OCCURRED:
+            raise InvalidStatusCodeException(raw.status_type)
+        # else it's an ERROR_OCCURRED type
+        """
+        class ErrorInformation1(IntFlag):
+            NO_MEDIA = 0x01
+            CUTTER_JAM = 0x04
+            WEAK_BATTERIES = 0x08
+            HIGH_VOLTAGE_ADAPTER = 0x40
+
+
+        class ErrorInformation2(IntFlag):
+            WRONG_MEDIA = 0x01
+            COVER_OPEN = 0x10
+            OVERHEATING = 0x20
+        """
+        # @TODO raise specific exception classes
+        raise RuntimeError(
+            f'PRINTER ERROR Occurred: status_type={raw.status_type:x} '
+            f'error_information_1={raw.error_information1:x} '
+            f'error_information_2={raw.error_information2:x}'
+        )
 
     def print_image(self, image_path: str):
         logger.debug('Encoding PNG image at %s', image_path)
@@ -264,7 +167,7 @@ class PtP710LabelMaker:
         self._send_raster_data(data)
         self._send_print_command_with_feeding()
         # @TODO fix this infinite loop
-        while True:
+        while not isinstance(status, PrintingCompleted):
             status: StatusMessage = self._receive_status_information_response()
             logger.info('Status: %s', status)
 

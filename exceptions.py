@@ -1,10 +1,4 @@
 
-class DeviceTurnedOffException(RuntimeError):
-
-    def __init__(self):
-        super(DeviceTurnedOffException, self).__init__('Device was turned off')
-
-
 class InvalidStatusResponseException(RuntimeError):
 
     def __init__(self, message_length: int):
@@ -33,3 +27,14 @@ class InvalidStatusCodeException(ValueError):
         super(InvalidStatusCodeException, self).__init__(
             f'ERROR: Printer responded with unknown status type {status_code:x}'
         )
+
+
+class PrinterError(RuntimeError):
+    pass
+
+
+class DeviceTurnedOffException(PrinterError):
+
+    def __init__(self):
+        super(DeviceTurnedOffException, self).__init__('Device was turned off')
+

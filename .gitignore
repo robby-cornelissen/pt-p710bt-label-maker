@@ -8,3 +8,4 @@
 *.xcf
 .idea/
 venv/
+*.log
