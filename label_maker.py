@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import argparse
 import logging
@@ -102,6 +103,11 @@ class PtP710LabelMaker:
         logger.debug('Send print and feed command')
         self._socket.send(b"\x1A")
 
+    def _send_print_command_without_feeding(self):
+        # print and feed [0C]
+        logger.debug('Send print WITHOUT feeding command')
+        self._socket.send(b"\x0C")
+
     def _send_status_information_request(self):
         # request status information [1B 69 53]
         logger.debug('Request status information')
@@ -148,7 +154,7 @@ class PtP710LabelMaker:
             f'error_information_2={raw.error_information2:x}'
         )
 
-    def print_image(self, image_path: str):
+    def print_image(self, image_path: str, num_copies: int = 1):
         logger.debug('Encoding PNG image at %s', image_path)
         data: bytearray = encode_png(image_path)
         logger.debug('Encoded to bytearray of length %d', len(data))
@@ -164,12 +170,18 @@ class PtP710LabelMaker:
         self._send_advanced_mode_settings()
         self._send_specify_margin_amount()
         self._send_select_compression_mode()
-        self._send_raster_data(data)
-        self._send_print_command_with_feeding()
-        # @TODO fix this infinite loop
-        while not isinstance(status, PrintingCompleted):
-            status: StatusMessage = self._receive_status_information_response()
-            logger.info('Status: %s', status)
+        i: int
+        for i in range(0, num_copies):
+            logger.info('Printing copy %d of %d', i + 1, num_copies)
+            self._send_raster_data(data)
+            if i == num_copies - 1:
+                self._send_print_command_with_feeding()
+            else:
+                self._send_print_command_without_feeding()
+            while not isinstance(status, PrintingCompleted):
+                status: StatusMessage = self._receive_status_information_response()
+                logger.info('Status: %s', status)
+        logger.info('Done.')
 
 
 def set_log_info():
@@ -214,6 +226,10 @@ def main(argv):
         default=1, help='BlueTooth Channel (default: 1)'
     )
     p.add_argument(
+        '-c', '--copies', dest='num_copies', action='store', type=int,
+        default=1, help='Print this number of copies of each image (default: 1)'
+    )
+    p.add_argument(
         'IMAGE_PATH', action='store', type=str, help='Path to image to print'
     )
     p.add_argument(
@@ -229,7 +245,7 @@ def main(argv):
         set_log_info()
     PtP710LabelMaker(
         args.BT_ADDRESS, args.bt_channel
-    ).print_image(args.IMAGE_PATH)
+    ).print_image(args.IMAGE_PATH, num_copies=args.num_copies)
 
 
 if __name__ == "__main__":
