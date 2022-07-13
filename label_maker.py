@@ -94,7 +94,7 @@ class PtP710LabelMaker:
         # @TODO rasterize is called here
         line: bytearray
         for line in rasterize(data):
-            logger.debug('Sending raster data line: %x', line)
+            logger.debug('Sending raster data line: %s', line.hex(' '))
             self._socket.send(bytes(line))
         logger.debug('Done sending raster image data')
 
@@ -117,7 +117,8 @@ class PtP710LabelMaker:
         # receive status information
         response: bytes = self._socket.recv(32)
         logger.debug(
-            'Received %d-byte status response ; %x', len(response), response
+            'Received %d-byte status response ; %s',
+            len(response), response.hex(' ')
         )
         raw: RawStatusMessage = RawStatusMessage(response)
         logger.debug('Got status message: %s', raw)
