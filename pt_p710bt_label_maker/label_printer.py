@@ -2,8 +2,6 @@ import sys
 import argparse
 import logging
 
-import bluetooth
-
 from pt_p710bt_label_maker.utils import set_log_debug, set_log_info
 from pt_p710bt_label_maker.label_rasterizer import encode_png, rasterize
 from pt_p710bt_label_maker.exceptions import (
@@ -15,79 +13,72 @@ from pt_p710bt_label_maker.status_message import (
     Mode, RawStatusMessage, ReplyToStatusRequest, PrintingCompleted,
     Notification, PhaseChange, StatusMessage
 )
+from pt_p710bt_label_maker.connectors import (
+    Connector, BluetoothConnector
+)
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
 logger = logging.getLogger()
 
-SocketType = bluetooth.BluetoothSocket
-
 
 class PtP710LabelMaker:
 
-    def __init__(self, bt_address: str, bt_channel: int):
-        logger.debug('Opening Bluetooth RFCOMM socket')
-        self._socket: SocketType = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        logger.info(
-            'Connecting to bluetooth device %s on channel %d',
-            bt_address, bt_channel
-        )
-        self._socket.connect((bt_address, bt_channel))
-        logger.debug('Connected to bluetooth device.')
+    def __init__(self, device: Connector):
+        self._device: Connector = device
 
     def __del__(self):
-        logger.debug('Closing socket connection')
-        self._socket.close()
+        del self._device
 
     def _send_invalidate(self):
         # send 100 null bytes
         logger.debug('Sending invalidate command (100 null bytes)')
-        self._socket.send(b"\x00" * 100)
+        self._device.send(b"\x00" * 100)
 
     def _send_initialize(self):
         # send [1B 40]
         logger.debug('Sending initialize command')
-        self._socket.send(b"\x1B\x40")
+        self._device.send(b"\x1B\x40")
 
     def _send_switch_dynamic_command_mode(self):
         # set dynamic command mode to "raster mode" [1B 69 61 {01}]
         logger.debug('Setting dynamic command mode to "raster mode"')
-        self._socket.send(b"\x1B\x69\x61\x01")
+        self._device.send(b"\x1B\x69\x61\x01")
 
     def _send_switch_automatic_status_notification_mode(self):
         # set automatic status notification mode to "notify" [1B 69 21 {00}]
         logger.debug('Setting automatic status notification mode to "notify"')
-        self._socket.send(b"\x1B\x69\x21\x00")
+        self._device.send(b"\x1B\x69\x21\x00")
 
     def _send_print_information_command(self, data_length: int):
         # print to 24mm tape [1B 69 7A {84 00 18 00 <data length 4 bytes> 00 00}]
         logger.debug('Setting to print on 24mm tape')
         # @TODO tape width is set here
-        self._socket.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
-        self._socket.send((data_length >> 4).to_bytes(4, 'little'))
-        self._socket.send(b"\x00\x00")
+        self._device.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
+        self._device.send((data_length >> 4).to_bytes(4, 'little'))
+        self._device.send(b"\x00\x00")
 
     def _send_various_mode_settings(self):
         # set to auto-cut, no mirror printing [1B 69 4D {40}]
         logger.debug('Setting auto-cut mode, no mirror printing')
         # @TODO auto-cut is set here
-        self._socket.send(b"\x1B\x69\x4D")
-        self._socket.send(Mode.AUTO_CUT.to_bytes(1, "big"))
+        self._device.send(b"\x1B\x69\x4D")
+        self._device.send(Mode.AUTO_CUT.to_bytes(1, "big"))
 
     def _send_advanced_mode_settings(self):
         # set print chaining off [1B 69 4B {08}]
         logger.debug('Set print chaining off')
-        self._socket.send(b"\x1B\x69\x4B\x08")
+        self._device.send(b"\x1B\x69\x4B\x08")
 
     def _send_specify_margin_amount(self):
         # set margin (feed) amount to 0 [1B 69 64 {00 00}]
         logger.debug('Set margin (feed) amount to zero (0)')
-        self._socket.send(b"\x1B\x69\x64\x00\x00")
+        self._device.send(b"\x1B\x69\x64\x00\x00")
 
     def _send_select_compression_mode(self):
         # set to TIFF compression [4D {02}]
         logger.debug('Set compression mode to TIFF')
-        self._socket.send(b"\x4D\x02")
+        self._device.send(b"\x4D\x02")
 
     def _send_raster_data(self, data: bytearray):
         # send all raster data lines
@@ -96,27 +87,27 @@ class PtP710LabelMaker:
         line: bytearray
         for line in rasterize(data):
             logger.debug('Sending raster data line: %s', line.hex(' '))
-            self._socket.send(bytes(line))
+            self._device.send(bytes(line))
         logger.debug('Done sending raster image data')
 
     def _send_print_command_with_feeding(self):
         # print and feed [1A]
         logger.debug('Send print and feed command')
-        self._socket.send(b"\x1A")
+        self._device.send(b"\x1A")
 
     def _send_print_command_without_feeding(self):
         # print and feed [0C]
         logger.debug('Send print WITHOUT feeding command')
-        self._socket.send(b"\x0C")
+        self._device.send(b"\x0C")
 
     def _send_status_information_request(self):
         # request status information [1B 69 53]
         logger.debug('Request status information')
-        self._socket.send(b"\x1B\x69\x53")
+        self._device.send(b"\x1B\x69\x53")
 
     def _receive_status_information_response(self) -> StatusMessage:
         # receive status information
-        response: bytes = self._socket.recv(32)
+        response: bytes = self._device.receive(32)
         logger.debug(
             'Received %d-byte status response ; %s',
             len(response), response.hex(' ')
@@ -212,9 +203,12 @@ def main():
         set_log_debug(logger)
     else:
         set_log_info(logger)
-    PtP710LabelMaker(
-        args.BT_ADDRESS, args.bt_channel
-    ).print_image(args.IMAGE_PATH, num_copies=args.num_copies)
+    device: Connector = BluetoothConnector(
+        args.BT_ADDRESS, bt_channel=args.bt_channel
+    )
+    PtP710LabelMaker(device).print_image(
+        args.IMAGE_PATH, num_copies=args.num_copies
+    )
 
 
 if __name__ == "__main__":
