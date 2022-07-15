@@ -7,8 +7,9 @@ import bluetooth
 
 from label_rasterizer import encode_png, rasterize
 from exceptions import (
-    DeviceTurnedOffException, InvalidStatusResponseException,
-    InvalidStatusCodeException
+    DeviceTurnedOffException, InvalidStatusCodeException,
+    NoMediaError, CutterJamError, WeakBatteriesError, HighVoltageAdapterError,
+    WrongMediaError, CoverOpenError, OverheatingError, UnknownStatusMessageError
 )
 from status_message import (
     Mode, RawStatusMessage, ReplyToStatusRequest, PrintingCompleted,
@@ -123,7 +124,7 @@ class PtP710LabelMaker:
         raw: RawStatusMessage = RawStatusMessage(response)
         logger.debug('Got status message: %s', raw)
         if raw.status_type == RawStatusMessage.StatusType.TURNED_OFF:
-            raise DeviceTurnedOffException()
+            raise DeviceTurnedOffException(raw)
         elif raw.status_type == RawStatusMessage.StatusType.REPLY_TO_STATUS_REQUEST:
             return ReplyToStatusRequest(raw)
         elif raw.status_type == RawStatusMessage.StatusType.PRINTING_COMPLETED:
@@ -135,25 +136,21 @@ class PtP710LabelMaker:
         elif raw.status_type != RawStatusMessage.StatusType.ERROR_OCCURRED:
             raise InvalidStatusCodeException(raw.status_type)
         # else it's an ERROR_OCCURRED type
-        """
-        class ErrorInformation1(IntFlag):
-            NO_MEDIA = 0x01
-            CUTTER_JAM = 0x04
-            WEAK_BATTERIES = 0x08
-            HIGH_VOLTAGE_ADAPTER = 0x40
-
-
-        class ErrorInformation2(IntFlag):
-            WRONG_MEDIA = 0x01
-            COVER_OPEN = 0x10
-            OVERHEATING = 0x20
-        """
-        # @TODO raise specific exception classes
-        raise RuntimeError(
-            f'PRINTER ERROR Occurred: status_type={raw.status_type:x} '
-            f'error_information_1={raw.error_information1:x} '
-            f'error_information_2={raw.error_information2:x}'
-        )
+        if raw.error_information1 == 0x01:
+            raise NoMediaError(raw)
+        if raw.error_information1 == 0x04:
+            raise CutterJamError(raw)
+        if raw.error_information1 == 0x08:
+            raise WeakBatteriesError(raw)
+        if raw.error_information1 == 0x40:
+            raise HighVoltageAdapterError(raw)
+        if raw.error_information2 == 0x01:
+            raise WrongMediaError(raw)
+        if raw.error_information2 == 0x10:
+            raise CoverOpenError(raw)
+        if raw.error_information2 == 0x20:
+            raise OverheatingError(raw)
+        raise UnknownStatusMessageError(raw)
 
     def print_image(self, image_path: str, num_copies: int = 1):
         logger.debug('Encoding PNG image at %s', image_path)
