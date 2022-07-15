@@ -4,6 +4,7 @@ import logging
 
 import bluetooth
 
+from pt_p710bt_label_maker.utils import set_log_debug, set_log_info
 from pt_p710bt_label_maker.label_rasterizer import encode_png, rasterize
 from pt_p710bt_label_maker.exceptions import (
     DeviceTurnedOffException, InvalidStatusCodeException,
@@ -181,35 +182,6 @@ class PtP710LabelMaker:
         logger.info('Done.')
 
 
-def set_log_info():
-    """set logger level to INFO"""
-    set_log_level_format(logging.INFO,
-                         '%(asctime)s %(levelname)s:%(name)s:%(message)s')
-
-
-def set_log_debug():
-    """set logger level to DEBUG, and debug-level output format"""
-    set_log_level_format(
-        logging.DEBUG,
-        "%(asctime)s [%(levelname)s %(filename)s:%(lineno)s - "
-        "%(name)s.%(funcName)s() ] %(message)s"
-    )
-
-
-def set_log_level_format(level, format):
-    """
-    Set logger level and format.
-
-    :param level: logging level; see the :py:mod:`logging` constants.
-    :type level: int
-    :param format: logging formatter format string
-    :type format: str
-    """
-    formatter = logging.Formatter(fmt=format)
-    logger.handlers[0].setFormatter(formatter)
-    logger.setLevel(level)
-
-
 def main():
     p = argparse.ArgumentParser(
         description='Brother PT-P710BT Label Maker controller'
@@ -237,9 +209,9 @@ def main():
     args = p.parse_args(sys.argv[1:])
     # set logging level
     if args.verbose:
-        set_log_debug()
+        set_log_debug(logger)
     else:
-        set_log_info()
+        set_log_info(logger)
     PtP710LabelMaker(
         args.BT_ADDRESS, args.bt_channel
     ).print_image(args.IMAGE_PATH, num_copies=args.num_copies)
