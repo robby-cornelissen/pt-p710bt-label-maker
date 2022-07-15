@@ -1,17 +1,16 @@
-#!/usr/bin/env python
 import sys
 import argparse
 import logging
 
 import bluetooth
 
-from label_rasterizer import encode_png, rasterize
-from exceptions import (
+from pt_p710bt_label_maker.label_rasterizer import encode_png, rasterize
+from pt_p710bt_label_maker.exceptions import (
     DeviceTurnedOffException, InvalidStatusCodeException,
     NoMediaError, CutterJamError, WeakBatteriesError, HighVoltageAdapterError,
     WrongMediaError, CoverOpenError, OverheatingError, UnknownStatusMessageError
 )
-from status_message import (
+from pt_p710bt_label_maker.status_message import (
     Mode, RawStatusMessage, ReplyToStatusRequest, PrintingCompleted,
     Notification, PhaseChange, StatusMessage
 )
@@ -211,7 +210,7 @@ def set_log_level_format(level, format):
     logger.setLevel(level)
 
 
-def main(argv):
+def main():
     p = argparse.ArgumentParser(
         description='Brother PT-P710BT Label Maker controller'
     )
@@ -235,7 +234,7 @@ def main(argv):
         help='BlueTooth device (MAC) address to connect to; must '
              'already be paired'
     )
-    args = p.parse_args(argv)
+    args = p.parse_args(sys.argv[1:])
     # set logging level
     if args.verbose:
         set_log_debug()
@@ -247,4 +246,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

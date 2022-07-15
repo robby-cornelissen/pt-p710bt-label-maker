@@ -1,7 +1,7 @@
 P-Touch Cube (PT-P710BT) label maker
 ====================================
 
-This is a small application script to allow printing from the command line on the Brother P-Touch Cube (PT-P710BT). It is based on the _"Raster Command Reference"_ made available by Brother on their support website. Theoretically, it should also work with other label printers that use the same command set, such as the PT-E550W and PT-P750W, but since I don't have access to these devices, I have not been able to verify this. 
+This is a small application script to allow printing from the command line on the Brother P-Touch Cube (PT-P710BT). It is based on the "Raster Command Reference" made available by Brother on their support website. Theoretically, it should also work with other label printers that use the same command set, such as the PT-E550W and PT-P750W, but since I don't have access to these devices, I have not been able to verify this.
 
 The script converts a PNG image to the raster format expected by the label printer, and communicates this to the printer over Bluetooth. 
 
@@ -21,23 +21,26 @@ The application script depends on the following packages:
  * `pypng <https://github.com/drj11/pypng>`__, to read PNG images
  * `packbits <https://github.com/psd-tools/packbits>`__, to compress data to TIFF format
 
-These can all be installed using ``pip``:
+The application and all dependencies can be installed by cloning the git repository and then running:
 
-    pip install -r requirements.txt
+    pip install -e .
 
 Note that the installation of ``pybluez`` requires the presence of the `bluez <http://www.bluez.org/>`__ development libraries and ``libbluetooth`` header files (``libbluetooth3-dev``). For most Linux distributions, these should be available through your regular package management system.
 
 Usage
 -----
 
-The application can be called as follows:
+Printing Images
++++++++++++++++
 
-    python label_maker.py <image-path> <bt-address> [<bt-channel>]
+For full usage information, run ``pt-label-printer --help``. A typical invocation for BlueTooth is:
+
+    pt-label-printer <image-path> <bt-address>
 
 The expected parameters are the following:
 
-* **`image-path`** The path to the PNG file to be printed. The image needs to be 128 pixels high, while the width is variable depending on how long you want your label to be. The script bases itself on the PNG image's alpha channel, and prints all pixels that are not fully transparent (alpha channel value greater than 0).
-* **`bt-address`** The Bluetooth address of the printer. The ``bluetoothctl`` application (part of the aforementioned ``bluez`` stack; on some distributions such as Arch, it may be part of a separate package like ``bluez-utils``) can be used to discover the printer's address, and pair with it from the command line:
+* **image-path** The path to the PNG file to be printed. The image needs to be 128 pixels high, while the width is variable depending on how long you want your label to be. The script bases itself on the PNG image's alpha channel, and prints all pixels that are not fully transparent (alpha channel value greater than 0).
+* **bt-address** The Bluetooth address of the printer. The ``bluetoothctl`` application (part of the aforementioned ``bluez`` stack; on some distributions such as Arch, it may be part of a separate package like ``bluez-utils``) can be used to discover the printer's address, and pair with it from the command line:
 
     $> bluetoothctl
     [bluetooth]# scan on
@@ -47,7 +50,8 @@ The expected parameters are the following:
     $>
 
 
-* **`bt-channel`** The Bluetooth RFCOMM port number (optional, defaults to ``1``).
+* **bt-channel** If you need to specify a Bluetooth RFCOMM port number other than the default of ``1``, that can be done with the ``-C <channel>`` or ``--channel <channel>`` option.
+* **multiple copies** You can print N copies of the label with the ``-c N`` or ``--copies N`` options.
 
 Limitations
 -----------
@@ -55,9 +59,6 @@ Limitations
 In its current version, these are the two most important limitations of the application script:
 
 * Hard-coded to print to 24mm tape.
-* Only prints one label at the time.
-
-Both of these might be addressed in future updates if the need arises.
 
 License
 -------

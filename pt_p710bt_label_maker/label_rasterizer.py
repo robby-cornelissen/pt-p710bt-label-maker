@@ -1,10 +1,10 @@
 import sys
-from typing import Iterator, Any, Dict, List
+from typing import Iterator, Any, Dict
 
 import png
 import packbits
 
-from exceptions import InvalidImageHeightException
+from pt_p710bt_label_maker.exceptions import InvalidImageHeightException
 
 IMAGE_HEIGHT: int = 128
 CHUNK_SIZE: int = 16

@@ -1,10 +1,7 @@
 from enum import IntEnum, IntFlag
 import logging
 
-from exceptions import (
-    DeviceTurnedOffException, InvalidStatusResponseException,
-    InvalidStatusCodeException
-)
+from pt_p710bt_label_maker.exceptions import InvalidStatusResponseException
 
 logger = logging.getLogger(__name__)
 
