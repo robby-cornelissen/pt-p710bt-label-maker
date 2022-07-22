@@ -14,7 +14,7 @@ from pt_p710bt_label_maker.status_message import (
     Notification, PhaseChange, StatusMessage
 )
 from pt_p710bt_label_maker.connectors import (
-    Connector, BluetoothConnector
+    Connector, BluetoothConnector, UsbConnector
 )
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
@@ -189,13 +189,21 @@ def main():
         '-c', '--copies', dest='num_copies', action='store', type=int,
         default=1, help='Print this number of copies of each image (default: 1)'
     )
+
+    usb_or_bt = p.add_mutually_exclusive_group(required=True)
+    usb_or_bt.add_argument(
+        '-B', '--bluetooth-address', dest='bt_address', action='store',
+        type=str,
+        default=None, help='BlueTooth device (MAC) address to connect to; must '
+                           'already be paired'
+    )
+    usb_or_bt.add_argument(
+        '-U', '--usb', dest='usb', action='store_true', default=False,
+        help='Use USB instead of bluetooth'
+    )
+
     p.add_argument(
         'IMAGE_PATH', action='store', type=str, help='Path to image to print'
-    )
-    p.add_argument(
-        'BT_ADDRESS', action='store', type=str,
-        help='BlueTooth device (MAC) address to connect to; must '
-             'already be paired'
     )
     args = p.parse_args(sys.argv[1:])
     # set logging level
@@ -203,9 +211,13 @@ def main():
         set_log_debug(logger)
     else:
         set_log_info(logger)
-    device: Connector = BluetoothConnector(
-        args.BT_ADDRESS, bt_channel=args.bt_channel
-    )
+    device: Connector
+    if args.usb:
+        device = UsbConnector()
+    else:
+        device = BluetoothConnector(
+            args.bt_address, bt_channel=args.bt_channel
+        )
     PtP710LabelMaker(device).print_image(
         args.IMAGE_PATH, num_copies=args.num_copies
     )

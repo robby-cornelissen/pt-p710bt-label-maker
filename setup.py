@@ -44,6 +44,7 @@ with open('README.rst') as file:
 requires = [
     'pypng==0.0.20',
     'packbits==0.6',
+    'pyusb==1.2.1',
     # as of 2022-03-30 the latest version of pybluez2 on PyPI is 0.44 from August 20, 2021;
     # that version uses setuptools "use_2to3=True" which was removed in setuptools v58.0.0,
     # therefore it won't install on modern Python versions
