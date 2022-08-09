@@ -46,6 +46,9 @@ class LabelImageGenerator:
             'text width is %dpx.',
             self.height_px, self.max_width,  self.font.size, self.width_px
         )
+        if self.width_px < self.height_px:
+            self.width_px = self.height_px
+            logger.info('Overriding minimum label width to be equal to height')
         self._image: Image = self._generate()
 
     def _get_fonts(
