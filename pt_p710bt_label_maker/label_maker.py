@@ -22,7 +22,12 @@ logger = logging.getLogger()
 
 class LabelImageGenerator:
 
-    def __init__(self, text: str, height_px: int = 128):
+    # Printer DPI
+    DPI: int = 180
+
+    def __init__(
+        self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None
+    ):
         self.text: str = text
         self.height_px: int = height_px
         logger.debug(
@@ -36,15 +41,13 @@ class LabelImageGenerator:
         # @TODO add an option for alignment of multi-line text
         # options are "left", "center", or "right"
         self.text_align: str = 'center'
-        # @TODO add option for fitting to a fixed width
-        self.max_width: Optional[int] = None
         self.font: ImageFont.FreeTypeFont
         self.width_px: int
-        self.font, self.width_px = self._fit_text_to_box(self.max_width)
+        self.font, self.width_px = self._fit_text_to_box(maxlen_px)
         logger.info(
             'Largest font size to fit %dpx high x %spx wide is %d; resulting '
             'text width is %dpx.',
-            self.height_px, self.max_width,  self.font.size, self.width_px
+            self.height_px, maxlen_px,  self.font.size, self.width_px
         )
         if self.width_px < self.height_px:
             self.width_px = self.height_px
@@ -169,11 +172,18 @@ def main():
     )
     p.add_argument('-P', '--no-preview', dest='preview', action='store_false',
                    default=True, help='Do not preview image before printing')
+    maxlen = p.add_mutually_exclusive_group()
+    maxlen.add_argument('--maxlen-px', dest='maxlen_px', action='store',
+                        type=int, help='Maximum label length in pixels')
+    maxlen.add_argument('--maxlen-inches', dest='maxlen_in', action='store',
+                        type=float, help='Maximum label length in inches')
     p.add_argument(
         'LABEL_TEXT', action='store', type=str, help='Text to print on label',
         nargs='+'
     )
     args = p.parse_args(sys.argv[1:])
+    if args.maxlen_in:
+        args.maxlen_px = args.maxlen_in * LabelImageGenerator.DPI
     # set logging level
     if args.verbose:
         set_log_debug(logger)
@@ -181,7 +191,7 @@ def main():
         set_log_info(logger)
     images: List[BytesIO] = []
     for i in args.LABEL_TEXT:
-        g = LabelImageGenerator(i)
+        g = LabelImageGenerator(i, maxlen_px=args.maxlen_px)
         if args.save_only:
             g.save(args.filename)
         if args.preview:

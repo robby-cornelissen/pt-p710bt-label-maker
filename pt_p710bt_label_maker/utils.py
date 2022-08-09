@@ -47,7 +47,6 @@ def add_printer_args(p: ArgumentParser):
         '-c', '--copies', dest='num_copies', action='store', type=int,
         default=1, help='Print this number of copies of each image (default: 1)'
     )
-
     usb_or_bt = p.add_mutually_exclusive_group(required=True)
     usb_or_bt.add_argument(
         '-B', '--bluetooth-address', dest='bt_address', action='store',

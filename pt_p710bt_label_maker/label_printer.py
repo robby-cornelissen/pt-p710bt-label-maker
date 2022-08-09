@@ -56,10 +56,11 @@ class PtP710LabelPrinter:
 
     def _send_print_information_command(self, data_length: int):
         # print to 24mm tape [1B 69 7A {84 00 18 00 <data length 4 bytes> 00 00}]
-        logger.debug('Setting to print on 24mm tape')
+        len: int = data_length >> 4
+        logger.debug('Setting to print on 24mm tape, %smm long', len)
         # @TODO tape width is set here
         self._device.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
-        self._device.send((data_length >> 4).to_bytes(4, 'little'))
+        self._device.send(len.to_bytes(4, 'little'))
         self._device.send(b"\x00\x00")
 
     def _send_various_mode_settings(self):
