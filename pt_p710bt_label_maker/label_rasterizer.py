@@ -1,10 +1,13 @@
-import sys
-from typing import Iterator, Any, Dict
+from typing import Iterator, Any, Dict, Union
+import logging
+from io import BytesIO
 
 import png
 import packbits
 
 from pt_p710bt_label_maker.exceptions import InvalidImageHeightException
+
+logger = logging.getLogger(__name__)
 
 IMAGE_HEIGHT: int = 128
 CHUNK_SIZE: int = 16
@@ -28,12 +31,17 @@ def rasterize(encoded_image_data: bytearray) -> Iterator[bytearray]:
         yield buffer
 
 
-def encode_png(image_path: str) -> bytearray:
+def encode_png(data: Union[str, BytesIO]) -> bytearray:
     width: int
     height: int
     rows: Iterator[bytearray]
     info: Dict[str, Any]
-    width, height, rows, info = png.Reader(filename=image_path).asRGBA()
+    if isinstance(data, str):
+        logger.debug('Using PNG from file at: %s', data)
+        width, height, rows, info = png.Reader(filename=data).asRGBA()
+    else:
+        logger.debug('Using PNG from file-like object')
+        width, height, rows, info = png.Reader(file=data).asRGBA()
 
     if height != IMAGE_HEIGHT:
         raise InvalidImageHeightException(IMAGE_HEIGHT, height)

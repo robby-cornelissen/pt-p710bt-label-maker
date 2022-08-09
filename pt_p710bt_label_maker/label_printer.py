@@ -1,8 +1,12 @@
 import sys
 import argparse
 import logging
+from typing import Union
+from io import BytesIO
 
-from pt_p710bt_label_maker.utils import set_log_debug, set_log_info
+from pt_p710bt_label_maker.utils import (
+    set_log_debug, set_log_info, add_printer_args
+)
 from pt_p710bt_label_maker.label_rasterizer import encode_png, rasterize
 from pt_p710bt_label_maker.exceptions import (
     DeviceTurnedOffException, InvalidStatusCodeException,
@@ -143,9 +147,8 @@ class PtP710LabelPrinter:
             raise OverheatingError(raw)
         raise UnknownStatusMessageError(raw)
 
-    def print_image(self, image_path: str, num_copies: int = 1):
-        logger.debug('Encoding PNG image at %s', image_path)
-        data: bytearray = encode_png(image_path)
+    def print_image(self, image: Union[str, BytesIO], num_copies: int = 1):
+        data: bytearray = encode_png(image)
         logger.debug('Encoded to bytearray of length %d', len(data))
         self._send_invalidate()
         self._send_initialize()
@@ -177,31 +180,7 @@ def main():
     p = argparse.ArgumentParser(
         description='Brother PT-P710BT Label Printer controller'
     )
-    p.add_argument(
-        '-v', '--verbose', dest='verbose', action='store_true',
-        default=False, help='debug-level output.'
-    )
-    p.add_argument(
-        '-C', '--bt-channel', dest='bt_channel', action='store', type=int,
-        default=1, help='BlueTooth Channel (default: 1)'
-    )
-    p.add_argument(
-        '-c', '--copies', dest='num_copies', action='store', type=int,
-        default=1, help='Print this number of copies of each image (default: 1)'
-    )
-
-    usb_or_bt = p.add_mutually_exclusive_group(required=True)
-    usb_or_bt.add_argument(
-        '-B', '--bluetooth-address', dest='bt_address', action='store',
-        type=str,
-        default=None, help='BlueTooth device (MAC) address to connect to; must '
-                           'already be paired'
-    )
-    usb_or_bt.add_argument(
-        '-U', '--usb', dest='usb', action='store_true', default=False,
-        help='Use USB instead of bluetooth'
-    )
-
+    add_printer_args(p)
     p.add_argument(
         'IMAGE_PATH', action='store', type=str, help='Path to image to print'
     )

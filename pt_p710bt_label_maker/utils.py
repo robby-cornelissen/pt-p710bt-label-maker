@@ -1,4 +1,5 @@
 import logging
+from argparse import ArgumentParser
 
 
 def set_log_info(l: logging.Logger):
@@ -31,3 +32,30 @@ def set_log_level_format(l: logging.Logger, level: int, format: str):
     formatter: logging.Formatter = logging.Formatter(fmt=format)
     l.handlers[0].setFormatter(formatter)
     l.setLevel(level)
+
+
+def add_printer_args(p: ArgumentParser):
+    p.add_argument(
+        '-v', '--verbose', dest='verbose', action='store_true',
+        default=False, help='debug-level output.'
+    )
+    p.add_argument(
+        '-C', '--bt-channel', dest='bt_channel', action='store', type=int,
+        default=1, help='BlueTooth Channel (default: 1)'
+    )
+    p.add_argument(
+        '-c', '--copies', dest='num_copies', action='store', type=int,
+        default=1, help='Print this number of copies of each image (default: 1)'
+    )
+
+    usb_or_bt = p.add_mutually_exclusive_group(required=True)
+    usb_or_bt.add_argument(
+        '-B', '--bluetooth-address', dest='bt_address', action='store',
+        type=str,
+        default=None, help='BlueTooth device (MAC) address to connect to; must '
+                           'already be paired'
+    )
+    usb_or_bt.add_argument(
+        '-U', '--usb', dest='usb', action='store_true', default=False,
+        help='Use USB instead of bluetooth'
+    )
