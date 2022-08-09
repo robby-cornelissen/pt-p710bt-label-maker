@@ -27,10 +27,11 @@ class LabelImageGenerator:
 
     def __init__(
         self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None,
-        font_filename: str = 'DejaVuSans.ttf'
+        font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4
     ):
         self.text: str = text
         self.height_px: int = height_px
+        self.padding_right: int = padding_right
         logger.debug(
             'Initializing LabelImageGenerator text="%s", height_px=%d',
             self.text, self.height_px
@@ -119,10 +120,13 @@ class LabelImageGenerator:
 
     def _generate(self) -> Image:
         logger.debug(
-            'Generating %d x %d RGBA image', self.width_px, self.height_px
+            'Generating %d x %d RGBA image', self.width_px + self.padding_right,
+            self.height_px
         )
         img: Image = Image.new(
-            'RGBA', (self.width_px, self.height_px), (255, 255, 255, 0)
+            'RGBA',
+            (self.width_px + self.padding_right, self.height_px),
+            (255, 255, 255, 0)
         )
         draw: ImageDraw = ImageDraw.Draw(img)
         pos: Tuple[int, int] = (self.width_px / 2, self.height_px / 2)
