@@ -1,7 +1,7 @@
 import sys
 import argparse
 import logging
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, Any, List, Literal
 from datetime import datetime
 from math import ceil
 from io import BytesIO
@@ -15,6 +15,8 @@ from pt_p710bt_label_maker.label_printer import (
     Connector, UsbConnector, BluetoothConnector, PtP710LabelPrinter
 )
 
+Alignment = Literal["center", "left", "right"]
+
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
 logger = logging.getLogger()
@@ -27,7 +29,8 @@ class LabelImageGenerator:
 
     def __init__(
         self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None,
-        font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4
+        font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
+        text_align: Alignment = 'center'
     ):
         self.text: str = text
         self.height_px: int = height_px
@@ -41,9 +44,7 @@ class LabelImageGenerator:
         )
         logger.debug('Loaded %d font options', len(self.fonts))
         self.text_anchor: str = 'mm'
-        # @TODO add an option for alignment of multi-line text
-        # options are "left", "center", or "right"
-        self.text_align: str = 'center'
+        self.text_align: Alignment = text_align
         self.font: ImageFont.FreeTypeFont
         self.width_px: int
         self.font, self.width_px = self._fit_text_to_box(maxlen_px)
@@ -186,6 +187,9 @@ def main():
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
                    action='store', default='DejaVuSans.ttf',
                    help='Font filename; Default: DejaVuSans.ttf')
+    p.add_argument('-a', '--align', dest='alignment', type=str, action='store',
+                   choices=Alignment.__args__, default='center',
+                   help='Text alignment; default: center')
     p.add_argument(
         'LABEL_TEXT', action='store', type=str, help='Text to print on label',
         nargs='+'
@@ -201,7 +205,8 @@ def main():
     images: List[BytesIO] = []
     for i in args.LABEL_TEXT:
         g = LabelImageGenerator(
-            i, maxlen_px=args.maxlen_px, font_filename=args.font_filename
+            i, maxlen_px=args.maxlen_px, font_filename=args.font_filename,
+            text_align=args.alignment
         )
         if args.save_only:
             g.save(args.filename)
