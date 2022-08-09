@@ -1,7 +1,7 @@
 import sys
 import argparse
 import logging
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 from datetime import datetime
 from math import ceil
 from io import BytesIO
@@ -167,7 +167,8 @@ def main():
     p.add_argument('-P', '--no-preview', dest='preview', action='store_false',
                    default=True, help='Do not preview image before printing')
     p.add_argument(
-        'LABEL_TEXT', action='store', type=str, help='Text to print on label'
+        'LABEL_TEXT', action='store', type=str, help='Text to print on label',
+        nargs='+'
     )
     args = p.parse_args(sys.argv[1:])
     # set logging level
@@ -175,12 +176,16 @@ def main():
         set_log_debug(logger)
     else:
         set_log_info(logger)
-    g = LabelImageGenerator(args.LABEL_TEXT)
+    images: List[BytesIO] = []
+    for i in args.LABEL_TEXT:
+        g = LabelImageGenerator(i)
+        if args.save_only:
+            g.save(args.filename)
+        if args.preview:
+            g.show()
+        images.append(g.file_obj)
     if args.save_only:
-        g.save(args.filename)
         raise SystemExit(0)
-    if args.preview:
-        g.show()
     # Begin code copied from label_printer.py
     device: Connector
     if args.usb:
@@ -189,8 +194,8 @@ def main():
         device = BluetoothConnector(
             args.bt_address, bt_channel=args.bt_channel
         )
-    PtP710LabelPrinter(device).print_image(
-        g.file_obj, num_copies=args.num_copies
+    PtP710LabelPrinter(device).print_images(
+        images, num_copies=args.num_copies
     )
 
 

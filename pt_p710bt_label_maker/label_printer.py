@@ -1,7 +1,7 @@
 import sys
 import argparse
 import logging
-from typing import Union
+from typing import Union, List
 from io import BytesIO
 
 from pt_p710bt_label_maker.utils import (
@@ -147,9 +147,11 @@ class PtP710LabelPrinter:
             raise OverheatingError(raw)
         raise UnknownStatusMessageError(raw)
 
-    def print_image(self, image: Union[str, BytesIO], num_copies: int = 1):
-        data: bytearray = encode_png(image)
-        logger.debug('Encoded to bytearray of length %d', len(data))
+    def print_images(
+        self, images: List[Union[str, BytesIO]], num_copies: int = 1
+    ):
+        if num_copies > 1:
+            images = images * num_copies
         self._send_invalidate()
         self._send_initialize()
         self._send_status_information_request()
@@ -157,16 +159,18 @@ class PtP710LabelPrinter:
         logger.info('Status: %s', status)
         self._send_switch_dynamic_command_mode()
         self._send_switch_automatic_status_notification_mode()
-        self._send_print_information_command(len(data))
         self._send_various_mode_settings()
         self._send_advanced_mode_settings()
         self._send_specify_margin_amount()
         self._send_select_compression_mode()
         i: int
-        for i in range(0, num_copies):
-            logger.info('Printing copy %d of %d', i + 1, num_copies)
+        for i, image in enumerate(images):
+            data: bytearray = encode_png(image)
+            logger.debug('Encoded to bytearray of length %d', len(data))
+            logger.info('Printing label %d of %d', i + 1, num_copies)
+            self._send_print_information_command(len(data))
             self._send_raster_data(data)
-            if i == num_copies - 1:
+            if i == len(images) - 1:
                 self._send_print_command_with_feeding()
             else:
                 self._send_print_command_without_feeding()
@@ -182,7 +186,8 @@ def main():
     )
     add_printer_args(p)
     p.add_argument(
-        'IMAGE_PATH', action='store', type=str, help='Path to image to print'
+        'IMAGE_PATH', action='store', type=str, help='Paths to images to print',
+        nargs='+'
     )
     args = p.parse_args(sys.argv[1:])
     # set logging level
@@ -197,8 +202,8 @@ def main():
         device = BluetoothConnector(
             args.bt_address, bt_channel=args.bt_channel
         )
-    PtP710LabelPrinter(device).print_image(
-        args.IMAGE_PATH, num_copies=args.num_copies
+    PtP710LabelPrinter(device).print_images(
+        [args.IMAGE_PATH], num_copies=args.num_copies
     )
 
 
