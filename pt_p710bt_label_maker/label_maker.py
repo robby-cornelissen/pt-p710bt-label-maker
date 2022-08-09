@@ -26,7 +26,8 @@ class LabelImageGenerator:
     DPI: int = 180
 
     def __init__(
-        self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None
+        self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None,
+        font_filename: str = 'DejaVuSans.ttf'
     ):
         self.text: str = text
         self.height_px: int = height_px
@@ -34,8 +35,9 @@ class LabelImageGenerator:
             'Initializing LabelImageGenerator text="%s", height_px=%d',
             self.text, self.height_px
         )
-        # @TODO pass params in to _get_fonts()
-        self.fonts: Dict[int, ImageFont.FreeTypeFont] = self._get_fonts()
+        self.fonts: Dict[int, ImageFont.FreeTypeFont] = self._get_fonts(
+            font_file=font_filename
+        )
         logger.debug('Loaded %d font options', len(self.fonts))
         self.text_anchor: str = 'mm'
         # @TODO add an option for alignment of multi-line text
@@ -177,6 +179,9 @@ def main():
                         type=int, help='Maximum label length in pixels')
     maxlen.add_argument('--maxlen-inches', dest='maxlen_in', action='store',
                         type=float, help='Maximum label length in inches')
+    p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
+                   action='store', default='DejaVuSans.ttf',
+                   help='Font filename; Default: DejaVuSans.ttf')
     p.add_argument(
         'LABEL_TEXT', action='store', type=str, help='Text to print on label',
         nargs='+'
@@ -191,7 +196,9 @@ def main():
         set_log_info(logger)
     images: List[BytesIO] = []
     for i in args.LABEL_TEXT:
-        g = LabelImageGenerator(i, maxlen_px=args.maxlen_px)
+        g = LabelImageGenerator(
+            i, maxlen_px=args.maxlen_px, font_filename=args.font_filename
+        )
         if args.save_only:
             g.save(args.filename)
         if args.preview:
