@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.WARNING, format=FORMAT)
 logger = logging.getLogger()
 
 
-class PtP710LabelMaker:
+class PtP710LabelPrinter:
 
     def __init__(self, device: Connector):
         self._device: Connector = device
@@ -175,7 +175,7 @@ class PtP710LabelMaker:
 
 def main():
     p = argparse.ArgumentParser(
-        description='Brother PT-P710BT Label Maker controller'
+        description='Brother PT-P710BT Label Printer controller'
     )
     p.add_argument(
         '-v', '--verbose', dest='verbose', action='store_true',
@@ -218,7 +218,7 @@ def main():
         device = BluetoothConnector(
             args.bt_address, bt_channel=args.bt_channel
         )
-    PtP710LabelMaker(device).print_image(
+    PtP710LabelPrinter(device).print_image(
         args.IMAGE_PATH, num_copies=args.num_copies
     )
 
