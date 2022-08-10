@@ -27,6 +27,7 @@ class LabelImageGenerator:
     # Printer DPI
     DPI: int = 180
 
+    # @TODO height_px here is specific to tape size
     def __init__(
         self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None,
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
@@ -177,13 +178,17 @@ def main():
         '--filename', dest='filename', action='store', type=str,
         help=f'Filename to save image to; default: {fname}', default=fname
     )
-    p.add_argument('-P', '--no-preview', dest='preview', action='store_false',
-                   default=True, help='Do not preview image before printing')
+    p.add_argument('-P', '--preview', dest='preview', action='store_true',
+                   default=False,
+                   help='Preview image after generating and ask if it should '
+                        'be printed')
     maxlen = p.add_mutually_exclusive_group()
     maxlen.add_argument('--maxlen-px', dest='maxlen_px', action='store',
                         type=int, help='Maximum label length in pixels')
     maxlen.add_argument('--maxlen-inches', dest='maxlen_in', action='store',
                         type=float, help='Maximum label length in inches')
+    maxlen.add_argument('--maxlen-mm', dest='maxlen_mm', action='store',
+                        type=float, help='Maximum label length in mm')
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
                    action='store', default='DejaVuSans.ttf',
                    help='Font filename; Default: DejaVuSans.ttf')
@@ -197,6 +202,8 @@ def main():
     args = p.parse_args(sys.argv[1:])
     if args.maxlen_in:
         args.maxlen_px = args.maxlen_in * LabelImageGenerator.DPI
+    elif args.maxlen_mm:
+        args.maxlen_px = (args.maxlen_mm / 25.4) * LabelImageGenerator.DPI
     # set logging level
     if args.verbose:
         set_log_debug(logger)
