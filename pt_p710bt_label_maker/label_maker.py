@@ -14,6 +14,7 @@ from pt_p710bt_label_maker.utils import (
 from pt_p710bt_label_maker.label_printer import (
     Connector, UsbConnector, BluetoothConnector, PtP710LabelPrinter
 )
+from pt_p710bt_label_maker.media_info import TAPE_MM_TO_PX
 
 Alignment = Literal["center", "left", "right"]
 
@@ -27,13 +28,13 @@ class LabelImageGenerator:
     # Printer DPI
     DPI: int = 180
 
-    # @TODO height_px here is specific to tape size
     def __init__(
-        self, text: str, height_px: int = 128, maxlen_px: Optional[int] = None,
+        self, text: str, height_px: int, maxlen_px: Optional[int] = None,
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
         text_align: Alignment = 'center'
     ):
         self.text: str = text
+        # for height, see media_info.TAPE_MM_TO_PX
         self.height_px: int = height_px
         self.padding_right: int = padding_right
         logger.debug(
@@ -212,8 +213,8 @@ def main():
     images: List[BytesIO] = []
     for i in args.LABEL_TEXT:
         g = LabelImageGenerator(
-            i, maxlen_px=args.maxlen_px, font_filename=args.font_filename,
-            text_align=args.alignment
+            i, height_px=TAPE_MM_TO_PX[args.tape_mm], maxlen_px=args.maxlen_px,
+            font_filename=args.font_filename, text_align=args.alignment
         )
         if args.save_only:
             g.save(args.filename)
@@ -230,7 +231,7 @@ def main():
         device = BluetoothConnector(
             args.bt_address, bt_channel=args.bt_channel
         )
-    PtP710LabelPrinter(device).print_images(
+    PtP710LabelPrinter(device, tape_mm=args.tape_mm).print_images(
         images, num_copies=args.num_copies
     )
 

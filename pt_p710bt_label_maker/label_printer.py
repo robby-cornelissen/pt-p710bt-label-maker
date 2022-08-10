@@ -20,6 +20,7 @@ from pt_p710bt_label_maker.status_message import (
 from pt_p710bt_label_maker.connectors import (
     Connector, BluetoothConnector, UsbConnector
 )
+from pt_p710bt_label_maker.media_info import TAPE_MM_TO_PX
 
 FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
@@ -28,8 +29,10 @@ logger = logging.getLogger()
 
 class PtP710LabelPrinter:
 
-    def __init__(self, device: Connector):
+    def __init__(self, device: Connector, tape_mm: int):
         self._device: Connector = device
+        self._tape_mm: int = tape_mm
+        self._tape_px: int = TAPE_MM_TO_PX[self._tape_mm]
 
     def __del__(self):
         del self._device
@@ -57,16 +60,17 @@ class PtP710LabelPrinter:
     def _send_print_information_command(self, data_length: int):
         # print to 24mm tape [1B 69 7A {84 00 18 00 <data length 4 bytes> 00 00}]
         len: int = data_length >> 4
-        logger.debug('Setting to print on 24mm tape, %smm long', len)
-        # @TODO tape width is set here
-        self._device.send(b"\x1B\x69\x7A\x84\x00\x18\x00")
+        logger.debug(
+            'Setting to print on %smm tape, %smm long', self._tape_mm, len
+        )
+        tape_width: bytes = self._tape_mm.to_bytes(2, 'little')
+        self._device.send(b"\x1B\x69\x7A\x84\x00" + tape_width + b"\x00")
         self._device.send(len.to_bytes(4, 'little'))
         self._device.send(b"\x00\x00")
 
     def _send_various_mode_settings(self):
         # set to auto-cut, no mirror printing [1B 69 4D {40}]
         logger.debug('Setting auto-cut mode, no mirror printing')
-        # @TODO auto-cut is set here
         self._device.send(b"\x1B\x69\x4D")
         self._device.send(Mode.AUTO_CUT.to_bytes(1, "big"))
 
@@ -88,7 +92,6 @@ class PtP710LabelPrinter:
     def _send_raster_data(self, data: bytearray):
         # send all raster data lines
         logger.debug('Rasterizing image...')
-        # @TODO rasterize is called here
         line: bytearray
         for line in rasterize(data):
             logger.debug('Sending raster data line: %s', line.hex(' '))
@@ -168,7 +171,7 @@ class PtP710LabelPrinter:
         self._send_select_compression_mode()
         i: int
         for i, image in enumerate(images):
-            data: bytearray = encode_png(image)
+            data: bytearray = encode_png(image, self._tape_mm)
             logger.debug('Encoded to bytearray of length %d', len(data))
             logger.info('Printing label %d of %d', i + 1, num_copies)
             self._send_print_information_command(len(data))
@@ -206,7 +209,7 @@ def main():
         device = BluetoothConnector(
             args.bt_address, bt_channel=args.bt_channel
         )
-    PtP710LabelPrinter(device).print_images(
+    PtP710LabelPrinter(device, tape_mm=args.tape_mm).print_images(
         args.IMAGE_PATH, num_copies=args.num_copies
     )
 

@@ -1,5 +1,6 @@
 import logging
 from argparse import ArgumentParser
+from pt_p710bt_label_maker.media_info import TAPE_MM_TO_PX
 
 
 def set_log_info(l: logging.Logger):
@@ -57,4 +58,9 @@ def add_printer_args(p: ArgumentParser):
     usb_or_bt.add_argument(
         '-U', '--usb', dest='usb', action='store_true', default=False,
         help='Use USB instead of bluetooth'
+    )
+    p.add_argument(
+        '-T', '--tape-mm', dest='tape_mm', action='store', type=int,
+        default=24, choices=TAPE_MM_TO_PX.keys(),
+        help='Width of tape in mm. Use 4 for 3.5mm tape.'
     )

@@ -45,7 +45,7 @@ Printing Images
 ::
 
     $ pt-label-printer -h
-    usage: pt-label-printer [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) IMAGE_PATH [IMAGE_PATH ...]
+    usage: pt-label-printer [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] IMAGE_PATH [IMAGE_PATH ...]
 
     Brother PT-P710BT Label Printer controller
 
@@ -62,6 +62,8 @@ Printing Images
       -B BT_ADDRESS, --bluetooth-address BT_ADDRESS
                             BlueTooth device (MAC) address to connect to; must already be paired
       -U, --usb             Use USB instead of bluetooth
+      -T {24,18,12,9,6,4}, --tape-mm {24,18,12,9,6,4}
+                            Width of tape in mm. Use 4 for 3.5mm tape.
 
 A typical invocation for BlueTooth is:
 
@@ -85,6 +87,7 @@ The expected parameters are the following:
 
 * **BT_CHANNEL** If you need to specify a Bluetooth RFCOMM port number other than the default of ``1``, that can be done with the ``-C <channel>`` or ``--channel <channel>`` option.
 * **NUM_COPIES** You can print N copies of the label(s) with the ``-c N`` or ``--copies N`` options. If you specify multiple images to print, you will get N copies of **each** image.
+* **-T** / **--tape-mm** - Tape width in mm to print on (the printer must be loaded with this size tape). Use 4 for 3.5mm tape (which the underlying API does). This program does not currently support detection of the current tape; if you try to print to a tape size other than what is in the printer, an exception will be raised.
 
 A typical invocation for printing over USB is:
 
@@ -97,7 +100,7 @@ Omit all of the bluetooth-related options (BT_ADDRESS, BT_CHANNEL, etc.) and spe
 Image File Height
 ^^^^^^^^^^^^^^^^^
 
-* 24mm (0.94") tape - 128px high
+To determine the proper image file height for a given label size, see ``TAPE_MM_TO_PX`` in ``media_info.py``. This maps the label with in mm to pixels high for the image.
 
 Rendering and Printing Text
 +++++++++++++++++++++++++++
@@ -107,7 +110,8 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
 ::
 
     $ pt-label-maker -h
-    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-f FONT_FILENAME] [-a {center,left,right}] LABEL_TEXT [LABEL_TEXT ...]
+    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-f FONT_FILENAME] [-a {center,left,right}]
+                          LABEL_TEXT [LABEL_TEXT ...]
 
     Brother PT-P710BT Label Maker
 
@@ -124,8 +128,10 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       -B BT_ADDRESS, --bluetooth-address BT_ADDRESS
                             BlueTooth device (MAC) address to connect to; must already be paired
       -U, --usb             Use USB instead of bluetooth
+      -T {24,18,12,9,6,4}, --tape-mm {24,18,12,9,6,4}
+                            Width of tape in mm. Use 4 for 3.5mm tape.
       -s, --save-only       Save generates image to current directory and exit
-      --filename FILENAME   Filename to save image to; default: 20220810T100952.png
+      --filename FILENAME   Filename to save image to; default: 20220810T105104.png
       -P, --preview         Preview image after generating and ask if it should be printed
       --maxlen-px MAXLEN_PX
                             Maximum label length in pixels
@@ -146,13 +152,6 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **--maxlen-px** / **--maxlen-inches** / **--maxlen-mm** - These options, mutually exclusive, allow specifying a maximum label length which the text will be fit to. Length can be specified in pixels (px), inches, or millimeters (mm), respectively. The PT-P710BT prints at 180 pixels per inch (PPI).
 * **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
-
-Limitations
------------
-
-In its current version, these are the two most important limitations of the application script:
-
-* Hard-coded to print to 24mm tape.
 
 Usage as a Library
 ------------------

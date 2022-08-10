@@ -45,19 +45,19 @@ class RawStatusMessage:
 
     def __str__(self):
         return f'RawStatusMessage({self.raw_response}): ' \
-               f'error_information1={self.error_information1:x} ' \
-               f'error_information2={self.error_information2:x} ' \
-               f'media_width={self.media_width:x} ' \
-               f'media_type={self.media_type:x} ' \
-               f'mode={self.mode:x} ' \
-               f'media_length={self.media_length:x} ' \
-               f'status_type={self.status_type:x} ' \
-               f'phase_type={self.phase_type:x} ' \
-               f'phase_number={self.phase_number:x} ' \
-               f'notification_number={self.notification_number:x} ' \
-               f'tape_color={self.tape_color:x} ' \
-               f'text_color={self.text_color:x} ' \
-               f'hardware_settings={self.hardware_settings:x}'
+               f'error_information1=0x{self.error_information1:x} ' \
+               f'error_information2=0x{self.error_information2:x} ' \
+               f'media_width=0x{self.media_width:x} ' \
+               f'media_type=0x{self.media_type:x} ' \
+               f'mode=0x{self.mode:x} ' \
+               f'media_length=0x{self.media_length:x} ' \
+               f'status_type=0x{self.status_type:x} ' \
+               f'phase_type=0x{self.phase_type:x} ' \
+               f'phase_number=0x{self.phase_number:x} ' \
+               f'notification_number=0x{self.notification_number:x} ' \
+               f'tape_color=0x{self.tape_color:x} ' \
+               f'text_color=0x{self.text_color:x} ' \
+               f'hardware_settings=0x{self.hardware_settings:x}'
 
 
 class StatusMessage:
