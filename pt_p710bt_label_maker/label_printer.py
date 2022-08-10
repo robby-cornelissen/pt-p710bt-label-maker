@@ -112,7 +112,9 @@ class PtP710LabelPrinter:
 
     def _receive_status_information_response(self) -> StatusMessage:
         # receive status information
-        response: bytes = self._device.receive(32)
+        response: bytes = b''
+        while len(response) == 0:
+            response = self._device.receive(32)
         logger.debug(
             'Received %d-byte status response ; %s',
             len(response), response.hex(' ')
@@ -175,6 +177,7 @@ class PtP710LabelPrinter:
                 self._send_print_command_with_feeding()
             else:
                 self._send_print_command_without_feeding()
+            logger.debug('Waiting for updated status message from printer')
             while not isinstance(status, PrintingCompleted):
                 status: StatusMessage = self._receive_status_information_response()
                 logger.info('Status: %s', status)
@@ -204,7 +207,7 @@ def main():
             args.bt_address, bt_channel=args.bt_channel
         )
     PtP710LabelPrinter(device).print_images(
-        [args.IMAGE_PATH], num_copies=args.num_copies
+        args.IMAGE_PATH, num_copies=args.num_copies
     )
 
 
