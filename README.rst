@@ -32,7 +32,19 @@ Note that the installation of ``pybluez`` requires the presence of the `bluez <h
 Additional Requirements for USB Connection
 ++++++++++++++++++++++++++++++++++++++++++
 
-When connected via USB, the PT-P710BT identifies itself as a USB printer, presumably for use with Brother's Windows and Mac software. As a result, on any computer (such as many desktop Linux distributions) with ``usblp`` support built-in, the device will generally be claimed by the ``usblp`` driver and assigned a port such as ``/dev/usb/lp0``. This will prevent any other software (such as this application) from communicating with the device over USB. To remedy this, remove the ``usblp`` module from your kernel with ``rmmod usblp`` (after plugging the device in). This will disable support for *all* USB printers until either you reboot or you add the module back with ``modprobe usblb``.
+When connected via USB, the PT-P710BT identifies itself as a USB printer, presumably for use with Brother's Windows and Mac software. As a result, on any Linux computer (such as many desktop Linux distributions) with ``usblp`` support built-in, the device will generally be claimed by the ``usblp`` driver and assigned a port such as ``/dev/usb/lp0``. This will prevent any other software (such as this application) from communicating with the device over USB (because it's bound to the usblp driver). To remedy this, use one of the following two methods:
+
+1. Remove the ``usblp`` module from your kernel with ``rmmod usblp`` (after plugging the device in). This will disable support for *all* USB printers until the device (or any other USB printer) is plugged in again. You will have to do this every time you plug the device in.
+2. Create a ``udev`` rule to unbind the device from the ``usblp`` driver. This is a bit of a hack as the ``usblp`` driver will still be bound to the device when it's plugged in, and then quickly unbound. Aside from the possible noise from the binding/unbinding (such as your OS briefly telling you that a new printer was attached), this will provide a simple user experience where nothing specific needs to be done when the device is plugged in.
+
+To create the udev rule, create a file (e.g. ``/etc/udev/rules.d/99-brother-pt-p710.rules``) with the following contents (largely based on `this StackExchange answer <https://unix.stackexchange.com/a/165686>`__ :
+
+::
+
+    # prevent usblb driver from binding Brother PT-P710BT label printer
+    ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", RUN="/bin/sh -c '/bin/echo -n $kernel:1.0 > /sys/bus/usb/drivers/usblp/unbind'"
+
+Then, run ``udevadm control --reload-rules`` to load the new rule and try plugging the printer in.
 
 Usage
 -----
