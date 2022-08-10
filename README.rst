@@ -40,34 +40,112 @@ Usage
 Printing Images
 +++++++++++++++
 
-For full usage information, run ``pt-label-printer --help``. A typical invocation for BlueTooth is:
+``pt-label-printer --help`` shows us the options for the image printing entrypoint:
 
 ::
 
-    pt-label-printer -B <bt-address> <image-path>
+    $ pt-label-printer -h
+    usage: pt-label-printer [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) IMAGE_PATH [IMAGE_PATH ...]
+
+    Brother PT-P710BT Label Printer controller
+
+    positional arguments:
+      IMAGE_PATH            Paths to images to print
+
+    options:
+      -h, --help            show this help message and exit
+      -v, --verbose         debug-level output.
+      -C BT_CHANNEL, --bt-channel BT_CHANNEL
+                            BlueTooth Channel (default: 1)
+      -c NUM_COPIES, --copies NUM_COPIES
+                            Print this number of copies of each image (default: 1)
+      -B BT_ADDRESS, --bluetooth-address BT_ADDRESS
+                            BlueTooth device (MAC) address to connect to; must already be paired
+      -U, --usb             Use USB instead of bluetooth
+
+A typical invocation for BlueTooth is:
+
+::
+
+    pt-label-printer -B <BT_ADDRESS> <IMAGE_PATH> [<IMAGE_PATH> ...]
 
 The expected parameters are the following:
 
-* **image-path** The path to the PNG file to be printed. The image needs to be 128 pixels high, while the width is variable depending on how long you want your label to be. The script bases itself on the PNG image's alpha channel, and prints all pixels that are not fully transparent (alpha channel value greater than 0).
-* **bt-address** The Bluetooth address of the printer. The ``bluetoothctl`` application (part of the aforementioned ``bluez`` stack; on some distributions such as Arch, it may be part of a separate package like ``bluez-utils``) can be used to discover the printer's address, and pair with it from the command line:
+* **IMAGE_PATH(s)** The path(s) to one or more PNG files to be printed. The images need to be the proper height for the tape size (see below), while the width is variable depending on how long you want your label to be. The script bases itself on the PNG image's alpha channel, and prints all pixels that are not fully transparent (alpha channel value greater than 0).
+* **BT_ADDRESS** The Bluetooth address of the printer. The ``bluetoothctl`` application (part of the aforementioned ``bluez`` stack; on some distributions such as Arch, it may be part of a separate package like ``bluez-utils``) can be used to discover the printer's address, and pair with it from the command line:
 
-::
+    ::
 
-    $> bluetoothctl
-    [bluetooth]# scan on
-    [NEW] Device A0:66:10:CA:E9:22 PT-P710BT6522
-    [bluetooth]# pair A0:66:10:CA:E7:42
-    [bluetooth]# exit
-    $>
+        $> bluetoothctl
+        [bluetooth]# scan on
+        [NEW] Device A0:66:10:CA:E9:22 PT-P710BT6522
+        [bluetooth]# pair A0:66:10:CA:E7:42
+        [bluetooth]# exit
+        $>
 
-* **bt-channel** If you need to specify a Bluetooth RFCOMM port number other than the default of ``1``, that can be done with the ``-C <channel>`` or ``--channel <channel>`` option.
-* **multiple copies** You can print N copies of the label with the ``-c N`` or ``--copies N`` options.
+* **BT_CHANNEL** If you need to specify a Bluetooth RFCOMM port number other than the default of ``1``, that can be done with the ``-C <channel>`` or ``--channel <channel>`` option.
+* **NUM_COPIES** You can print N copies of the label(s) with the ``-c N`` or ``--copies N`` options. If you specify multiple images to print, you will get N copies of **each** image.
 
-A typical invocation over USB is
+A typical invocation for printing over USB is:
 
 ::
 
     pt-label-printer -U <image-path>
+
+Omit all of the bluetooth-related options (BT_ADDRESS, BT_CHANNEL, etc.) and specify the ``-U`` / ``--usb`` option instead. This currently only supports one printer at a time (i.e. if you plug multiple PT-P710BT printers in via USB at the same time, the first one found will be used for printing).
+
+Image File Height
+^^^^^^^^^^^^^^^^^
+
+* 24mm (0.94") tape - 128px high
+
+Rendering and Printing Text
++++++++++++++++++++++++++++
+
+The ``pt-label-maker`` entrypoint will render specified text as a PNG image and print it, all in one command.
+
+::
+
+    $ pt-label-maker -h
+    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-f FONT_FILENAME] [-a {center,left,right}] LABEL_TEXT [LABEL_TEXT ...]
+
+    Brother PT-P710BT Label Maker
+
+    positional arguments:
+      LABEL_TEXT            Text to print on label
+
+    options:
+      -h, --help            show this help message and exit
+      -v, --verbose         debug-level output.
+      -C BT_CHANNEL, --bt-channel BT_CHANNEL
+                            BlueTooth Channel (default: 1)
+      -c NUM_COPIES, --copies NUM_COPIES
+                            Print this number of copies of each image (default: 1)
+      -B BT_ADDRESS, --bluetooth-address BT_ADDRESS
+                            BlueTooth device (MAC) address to connect to; must already be paired
+      -U, --usb             Use USB instead of bluetooth
+      -s, --save-only       Save generates image to current directory and exit
+      --filename FILENAME   Filename to save image to; default: 20220810T100952.png
+      -P, --preview         Preview image after generating and ask if it should be printed
+      --maxlen-px MAXLEN_PX
+                            Maximum label length in pixels
+      --maxlen-inches MAXLEN_IN
+                            Maximum label length in inches
+      --maxlen-mm MAXLEN_MM
+                            Maximum label length in mm
+      -f FONT_FILENAME, --font-filename FONT_FILENAME
+                            Font filename; Default: DejaVuSans.ttf
+      -a {center,left,right}, --align {center,left,right}
+                            Text alignment; default: center
+
+This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label-printer`` plus a number of options specific to text rendering:
+
+* **LABEL_TEXT** - Instead of accepting IMAGE_PATHs to print, this command accepts strings of text to render and print. Text will be printed in the largest font size that fits. You can specify multiple arguments to print multiple labels; ``pt-label-maker -U foo bar baz`` will print three (3) labels, one with the word "foo", one with "bar", and one with "baz". You can also specify newlines/linebreaks in the text to generate multi-line labels; do this however your shell handles it (i.e. in Bash to print a 3-line label with "foo", "bar", and "baz" on separate lines you could run ``pt-label-maker -U $'foo\nbar\nbaz'``.
+* **-s** / **--save-only** - Instead of printing the label, just render the text to PNG and save it to disk. You can specify a filename with **--filename** or use the default which is named after the current timestamp. Note that **save-only does not currently support multiple labels**; only the last one will be saved.
+* **-P** / **--preview** - When run with this option, each image will be displayed before printing. The user will be asked with an interactive y/N prompt if they want to print the previewed image.
+* **--maxlen-px** / **--maxlen-inches** / **--maxlen-mm** - These options, mutually exclusive, allow specifying a maximum label length which the text will be fit to. Length can be specified in pixels (px), inches, or millimeters (mm), respectively. The PT-P710BT prints at 180 pixels per inch (PPI).
+* **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__.
+* **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
 
 Limitations
 -----------
@@ -75,6 +153,11 @@ Limitations
 In its current version, these are the two most important limitations of the application script:
 
 * Hard-coded to print to 24mm tape.
+
+Usage as a Library
+------------------
+
+Both the image printing and the text rendering and printing classes can be used from other Python scripts/applications as libraries. Detailed documentation is not currently available, but see the ``main()`` methods of ``label_maker.py`` and ``label_printer.py`` for examples of how to use the relevant classes.
 
 License
 -------
