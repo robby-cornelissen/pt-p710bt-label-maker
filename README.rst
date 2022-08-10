@@ -122,7 +122,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
 ::
 
     $ pt-label-maker -h
-    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-f FONT_FILENAME] [-a {center,left,right}]
+    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-r | -R] [-f FONT_FILENAME] [-a {center,left,right}]
                           LABEL_TEXT [LABEL_TEXT ...]
 
     Brother PT-P710BT Label Maker
@@ -141,9 +141,9 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
                             BlueTooth device (MAC) address to connect to; must already be paired
       -U, --usb             Use USB instead of bluetooth
       -T {24,18,12,9,6,4}, --tape-mm {24,18,12,9,6,4}
-                            Width of tape in mm. Use 4 for 3.5mm tape.
+                            Width of tape in mm. Use 4 for 3.5mm tape. Default: 24
       -s, --save-only       Save generates image to current directory and exit
-      --filename FILENAME   Filename to save image to; default: 20220810T105104.png
+      --filename FILENAME   Filename to save image to; default: 20220810T164802.png
       -P, --preview         Preview image after generating and ask if it should be printed
       --maxlen-px MAXLEN_PX
                             Maximum label length in pixels
@@ -151,6 +151,8 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
                             Maximum label length in inches
       --maxlen-mm MAXLEN_MM
                             Maximum label length in mm
+      -r, --rotate          Rotate text 90°, printing once at start of label. Use the --maxlen options to set label length.
+      -R, --rotate-repeat   Rotate text 90° and print repeatedly along length of label. Use the --maxlen options to set label length.
       -f FONT_FILENAME, --font-filename FONT_FILENAME
                             Font filename; Default: DejaVuSans.ttf
       -a {center,left,right}, --align {center,left,right}
@@ -162,6 +164,8 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **-s** / **--save-only** - Instead of printing the label, just render the text to PNG and save it to disk. You can specify a filename with **--filename** or use the default which is named after the current timestamp. Note that **save-only does not currently support multiple labels**; only the last one will be saved.
 * **-P** / **--preview** - When run with this option, each image will be displayed before printing. The user will be asked with an interactive y/N prompt if they want to print the previewed image.
 * **--maxlen-px** / **--maxlen-inches** / **--maxlen-mm** - These options, mutually exclusive, allow specifying a maximum label length which the text will be fit to. Length can be specified in pixels (px), inches, or millimeters (mm), respectively. The PT-P710BT prints at 180 pixels per inch (PPI).
+* **-r** / **--rotate** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed once along the leading edge of the label. Label length will be determined by the ``--maxlen`` arguments.
+* **-R** / **--rotate-repeat** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed repeated along the length of the label, as many times as will fit with the default line spacing of the font. Label length will be determined by the ``--maxlen`` arguments. This option replicates a standard cable wrap label (for average Cat6 cable, maxlen should be 1.4 inches).
 * **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
 

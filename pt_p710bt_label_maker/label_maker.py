@@ -101,11 +101,11 @@ class LabelImageGenerator:
         }
 
     def _get_text_dimensions(
-        self, font: ImageFont.FreeTypeFont, draw: ImageDraw
+        self, font: ImageFont.FreeTypeFont, draw: ImageDraw, text: str
     ) -> Tuple[int, int]:
         # https://stackoverflow.com/a/46220683/9263761
         bbox: Tuple[float, float, float, float] = draw.textbbox(
-            xy=(0, 0), text=self.text, font=font, anchor=self.text_anchor,
+            xy=(0, 0), text=text, font=font, anchor=self.text_anchor,
             align=self.text_align
         )
         width = bbox[2] - bbox[0]
@@ -128,11 +128,17 @@ class LabelImageGenerator:
             '%s pixels wide', self.text, max_height, max_width
         )
         last: int = min(self.fonts.keys())
-        last_width: int = self._get_text_dimensions(self.fonts[last], draw)[0]
-        last_height: int = self._get_text_dimensions(self.fonts[last], draw)[1]
+        last_width: int = self._get_text_dimensions(
+            self.fonts[last], draw, self.text
+        )[0]
+        last_height: int = self._get_text_dimensions(
+            self.fonts[last], draw, self.text
+        )[1]
         for i in sorted(self.fonts.keys(), reverse=True):
             try:
-                w, h = self._get_text_dimensions(self.fonts[i], draw)
+                w, h = self._get_text_dimensions(
+                    self.fonts[i], draw, self.text
+                )
             except OSError as ex:
                 logger.debug('Error on font size %d: %s', i, ex, exc_info=True)
                 continue
@@ -191,8 +197,31 @@ class LabelImageGenerator:
             'Pasting temporary text image into final image at (%d, %d)', 0, 0
         )
         img.paste(rot_text, box=(0, 0))
+        if self.rotate_repeat:
+            # ok, now paste the repetitions...
+            spacing: int = self.font_line_spacing
+            logger.debug('Line spacing for font: %d px', spacing)
+            x: int = self.text_height_px + spacing
+            while x < self.width_px:
+                logger.debug(
+                    'Pasting temporary text image into final image at (%d, %d)',
+                    x, 0
+                )
+                img.paste(rot_text, box=(x, 0))
+                x += self.text_height_px + spacing
         logger.info('Generated final image')
         return img
+
+    @property
+    def font_line_spacing(self) -> int:
+        img: Image = Image.new("RGB", (2, 2), (255, 255, 255))
+        draw: ImageDraw = ImageDraw.Draw(img)
+        single: int
+        double: int
+        _, single = self._get_text_dimensions(self.font, draw, 'FOO')
+        _, double = self._get_text_dimensions(self.font, draw, 'FOO\nBAR')
+        spacing = double - (single * 2)
+        return ceil(spacing)
 
     def _generate(self) -> Image:
         logger.debug(
