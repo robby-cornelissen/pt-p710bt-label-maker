@@ -31,7 +31,8 @@ class LabelImageGenerator:
     def __init__(
         self, text: str, height_px: int, maxlen_px: Optional[int] = None,
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
-        text_align: Alignment = 'center'
+        text_align: Alignment = 'center', rotate: bool = False,
+        rotate_repeat: bool = False
     ):
         self.text: str = text
         # for height, see media_info.TAPE_MM_TO_PX
@@ -47,18 +48,43 @@ class LabelImageGenerator:
         logger.debug('Loaded %d font options', len(self.fonts))
         self.text_anchor: str = 'mm'
         self.text_align: Alignment = text_align
+        self.rotate: bool = rotate
+        self.rotate_repeat: bool = rotate_repeat
         self.font: ImageFont.FreeTypeFont
         self.width_px: int
-        self.font, self.width_px = self._fit_text_to_box(maxlen_px)
-        logger.info(
-            'Largest font size to fit %dpx high x %spx wide is %d; resulting '
-            'text width is %dpx.',
-            self.height_px, maxlen_px,  self.font.size, self.width_px
-        )
+        #: when printing rotated or rotated repeated, this is the width of one
+        #: line of text
+        self.text_width_px: int = 0
+        self.text_height_px: int = 0
+        if self.rotate or self.rotate_repeat:
+            self.width_px = ceil(maxlen_px)
+            # swap height and width to find what will fit when rotated
+            self.font, self.text_width_px, self.text_height_px = self._fit_text_to_box(
+                maxlen_px, self.height_px
+            )
+            logger.info(
+                'Largest font size to fit rotated %dpx high x %spx wide is %d;'
+                ' resulting text height is %dpx and width is %dpx.',
+                maxlen_px, self.height_px, self.font.size, self.text_height_px,
+                self.text_width_px
+            )
+        else:
+            self.font, self.width_px, _ = self._fit_text_to_box(
+                self.height_px, maxlen_px
+            )
+            logger.info(
+                'Largest font size to fit %dpx high x %spx wide is %d; resulting '
+                'text width is %dpx wide.',
+                self.height_px, maxlen_px, self.font.size, self.width_px
+            )
         if self.width_px < self.height_px:
             self.width_px = self.height_px
             logger.info('Overriding minimum label width to be equal to height')
-        self._image: Image = self._generate()
+        self._image: Image
+        if self.rotate or self.rotate_repeat:
+            self._image = self._generate_rotated()
+        else:
+            self._image = self._generate()
 
     def _get_fonts(
         self, font_file: str = 'DejaVuSans.ttf', min_size: int = 4,
@@ -87,8 +113,8 @@ class LabelImageGenerator:
         return width, height
 
     def _fit_text_to_box(
-        self, max_width: Optional[int] = None
-    ) -> Tuple[ImageFont.FreeTypeFont, int]:
+        self, max_height: int, max_width: Optional[int] = None
+    ) -> Tuple[ImageFont.FreeTypeFont, int, int]:
         """
         Find the largest ImageFont that fits the label height and optionally a
         maximum width. Return a 2-tuple of that ImageFont and the resulting text
@@ -99,10 +125,11 @@ class LabelImageGenerator:
         draw: ImageDraw = ImageDraw.Draw(img)
         logger.debug(
             'Finding maximum font size that fits "%s" in %d pixels high and '
-            '%s pixels wide', self.text, self.height_px, max_width
+            '%s pixels wide', self.text, max_height, max_width
         )
         last: int = min(self.fonts.keys())
         last_width: int = self._get_text_dimensions(self.fonts[last], draw)[0]
+        last_height: int = self._get_text_dimensions(self.fonts[last], draw)[1]
         for i in sorted(self.fonts.keys(), reverse=True):
             try:
                 w, h = self._get_text_dimensions(self.fonts[i], draw)
@@ -110,16 +137,62 @@ class LabelImageGenerator:
                 logger.debug('Error on font size %d: %s', i, ex, exc_info=True)
                 continue
             logger.debug('Text dimensions for size %d: %d x %d', i, w, h)
-            if h <= self.height_px and (max_width is None or w <= max_width):
+            if h <= max_height and (max_width is None or w <= max_width):
                 last = i
                 last_width = w
+                last_height = h
                 break
         last_width = ceil(last_width)
         logger.debug(
             'Font size %d is largest to fit; resulting width: %dpx',
             last, last_width
         )
-        return self.fonts[last], last_width
+        return self.fonts[last], last_width, last_height
+
+    def _generate_rotated(self) -> Image:
+        # generate a temporary image containing the text, sized just to fit
+        logger.debug(
+            'Generating temporary image for rotated text; %dpx x %dpx',
+            self.height_px, self.text_height_px
+        )
+        textimg: Image = Image.new(
+            'RGBA',
+            (self.height_px, self.text_height_px),  # these are swapped
+            (255, 255, 255, 0)
+        )
+        draw: ImageDraw = ImageDraw.Draw(textimg)
+        pos: Tuple[int, int] = (self.height_px / 2, self.text_height_px / 2)
+        kwargs: Dict[str, Any] = {
+            'xy': pos,
+            'text': self.text,
+            'fill': (0, 0, 0, 255),
+            'font': self.font,
+            'anchor': self.text_anchor
+        }
+        if "\n" in self.text:
+            draw.multiline_text(align=self.text_align, **kwargs)
+        else:
+            draw.text(**kwargs)
+        # now rotate the image 90 degrees
+        logger.debug('Rotating temporary image')
+        rot_text: Image = textimg.rotate(90, expand=True)
+        # now generate the final image at final printing size
+        logger.debug(
+            'Generating final %d x %d RGBA image',
+            self.width_px + self.padding_right, self.height_px
+        )
+        img: Image = Image.new(
+            'RGBA',
+            (self.width_px + self.padding_right, self.height_px),
+            (255, 255, 255, 0)
+        )
+        # paste the first block of text into it; box is upper left corner coords
+        logger.debug(
+            'Pasting temporary text image into final image at (%d, %d)', 0, 0
+        )
+        img.paste(rot_text, box=(0, 0))
+        logger.info('Generated final image')
+        return img
 
     def _generate(self) -> Image:
         logger.debug(
@@ -190,6 +263,18 @@ def main():
                         type=float, help='Maximum label length in inches')
     maxlen.add_argument('--maxlen-mm', dest='maxlen_mm', action='store',
                         type=float, help='Maximum label length in mm')
+    rotrep = p.add_mutually_exclusive_group()
+    rotrep.add_argument(
+        '-r', '--rotate', dest='rotate', action='store_true', default=False,
+        help='Rotate text 90°, printing once at start of label. Use the '
+             '--maxlen options to set label length.'
+    )
+    rotrep.add_argument(
+        '-R', '--rotate-repeat', dest='rotate_repeat', action='store_true',
+        default=False,
+        help='Rotate text 90° and print repeatedly along length of label. Use '
+             'the --maxlen options to set label length.'
+    )
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
                    action='store', default='DejaVuSans.ttf',
                    help='Font filename; Default: DejaVuSans.ttf')
@@ -214,7 +299,8 @@ def main():
     for i in args.LABEL_TEXT:
         g = LabelImageGenerator(
             i, height_px=TAPE_MM_TO_PX[args.tape_mm], maxlen_px=args.maxlen_px,
-            font_filename=args.font_filename, text_align=args.alignment
+            font_filename=args.font_filename, text_align=args.alignment,
+            rotate=args.rotate, rotate_repeat=args.rotate_repeat
         )
         if args.save_only:
             g.save(args.filename)
