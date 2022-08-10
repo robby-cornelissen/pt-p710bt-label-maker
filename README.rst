@@ -21,6 +21,7 @@ The application script depends on the following packages:
 * `pypng <https://github.com/drj11/pypng>`__, to read PNG images
 * `packbits <https://github.com/psd-tools/packbits>`__, to compress data to TIFF format
 * `pyusb <https://github.com/pyusb/pyusb>`__ for connecting to USB devices.
+* `pillow <https://python-pillow.org/>`__ for rendering text.
 
 The application and all dependencies can be installed by cloning the git repository and then running:
 
@@ -31,9 +32,7 @@ Note that the installation of ``pybluez`` requires the presence of the `bluez <h
 Additional Requirements for USB Connection
 ++++++++++++++++++++++++++++++++++++++++++
 
-When connected via USB, the PT-P710BT identifies itself as a USB printer, presumably for use with Brother's Windows and Mac software. As a result, on any computer (such as many desktop Linux distributions) with ``usblp`` support built-in, the device will generally be claimed by the ``usblp`` driver and assigned a port such as ``/dev/usb/lp0``. This will prevent any other software (such as this application) from communicating with the device over USB. There are two ways to remedy this:
-
-1. Remove the ``usblp`` module from your kernel with ``rmmod usblp``. This will disable support for *all* USB printers until either you reboot or you add the module back with ``modprobe usblb``.
+When connected via USB, the PT-P710BT identifies itself as a USB printer, presumably for use with Brother's Windows and Mac software. As a result, on any computer (such as many desktop Linux distributions) with ``usblp`` support built-in, the device will generally be claimed by the ``usblp`` driver and assigned a port such as ``/dev/usb/lp0``. This will prevent any other software (such as this application) from communicating with the device over USB. To remedy this, remove the ``usblp`` module from your kernel with ``rmmod usblp`` (after plugging the device in). This will disable support for *all* USB printers until either you reboot or you add the module back with ``modprobe usblb``.
 
 Usage
 -----
