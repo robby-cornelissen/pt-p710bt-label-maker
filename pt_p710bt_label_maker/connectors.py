@@ -105,7 +105,7 @@ class UsbConnector(Connector):
         pass
 
     def send(self, data: bytes):
-        self._out_endpoint.write(data)
+        self._out_endpoint.write(data, timeout=10000)
 
     def receive(self, length: int) -> bytes:
-        return self._in_endpoint.read(length).tobytes()
+        return self._in_endpoint.read(length, timeout=10000).tobytes()
