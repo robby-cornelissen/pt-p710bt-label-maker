@@ -117,8 +117,8 @@ class LabelImageGenerator:
     ) -> Tuple[ImageFont.FreeTypeFont, int, int]:
         """
         Find the largest ImageFont that fits the label height and optionally a
-        maximum width. Return a 2-tuple of that ImageFont and the resulting text
-        width (int).
+        maximum width. Return a 3-tuple of that ImageFont and the resulting text
+        width (int) and height (int).
         """
         # temporary image and draw
         img: Image = Image.new("RGB", (2, 2), (255, 255, 255))

@@ -52,6 +52,7 @@ requires = [
     # so we have to install from git.
     'pybluez @ git+https://github.com/pybluez/pybluez.git@07ebef044195331a48bbb90a3acb911922048ba0',
     'pillow>=9.2.0,<10.0.0',
+    'python-barcode>=0.14.0,<1.0.0'
 ]
 
 classifiers = [
@@ -84,6 +85,7 @@ setup(
         'console_scripts': [
             'pt-label-printer = pt_p710bt_label_maker.label_printer:main',
             'pt-label-maker = pt_p710bt_label_maker.label_maker:main',
+            'pt-barcode-label = pt_p710bt_label_maker.barcode_label:main',
         ]
     }
 )
