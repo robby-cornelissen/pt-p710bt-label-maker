@@ -3,12 +3,11 @@ import argparse
 import logging
 from typing import Optional, Tuple, Dict, Any, List, Literal, Callable
 from datetime import datetime
-from math import ceil
+from math import ceil, floor
 from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
-from barcode.writer import ImageWriter, pt2mm, mm2px
-import barcode
+from barcode.writer import ImageWriter
 from barcode.base import Barcode
 
 from pt_p710bt_label_maker.utils import (
@@ -42,7 +41,9 @@ class BarcodeLabelGenerator:
     ):
         self.value: str = value
         self.show_text: bool = show_text
+        self.font_filename: str = font_filename
         self.symbology: str = barcode_class_name
+        self.maxlen_px: Optional[int] = maxlen_px
         self.barcode_cls: Callable = BARCODE_CLASSES[self.symbology]
         # for height, see media_info.TAPE_MM_TO_PX
         self.height_px: int = height_px
@@ -56,24 +57,108 @@ class BarcodeLabelGenerator:
             self.value, self.symbology, self.barcode_cls, self.height_px,
             maxlen_px, show_text
         )
+        self.num_modules: int = self._get_num_modules()
+        if not self.maxlen_px:
+            self.maxlen_px = self.num_modules + 22
+        self._barcode_image: Image = self._generate_barcode_image(
+            self.maxlen_px
+        )
+        logger.info(
+            'Generated barcode image of %spx wide x %spx high',
+            self._barcode_image.width, self._barcode_image.height
+        )
+        self._image: Image
+        if self.show_text:
+            self._image = self._generate_combined_image()
+        else:
+            self._image = self._barcode_image
+
+    def _white_to_transparent(self, img: Image) -> Image:
+        img = img.convert("RGBA")
+        datas = img.getdata()
+        newData = []
+        for item in datas:
+            if item[0] == 255 and item[1] == 255 and item[2] == 255:
+                newData.append((255, 255, 255, 0))
+            else:
+                newData.append(item)
+        img.putdata(newData)
+        return img
+
+    def _generate_combined_image(self) -> Image:
+        font: ImageFont.FreeTypeFont
+        text_w: int
+        text_h: int
+        font, text_w, text_h = self._fit_text_to_box(
+            self.height_px / 4, self.maxlen_px
+        )
+        width = max([self._barcode_image.width, text_w])
+        logger.debug(
+            'Generating %d x %d RGBA image', width, self.height_px
+        )
+        img: Image = Image.new(
+            'RGBA',
+            (width, self.height_px),
+            (255, 255, 255, 0)
+        )
+        # paste the barcode at the top left
+        img.paste(
+            self._barcode_image,
+            box=(
+                floor((width - self._barcode_image.width) / 2),
+                0
+            )
+        )
+        # now add the text
+        draw: ImageDraw = ImageDraw.Draw(img)
+        pos: Tuple[int, int] = (
+            floor(width / 2),
+            self._barcode_image.height +
+            floor((self.height_px - self._barcode_image.height) / 2)
+        )
+        kwargs: Dict[str, Any] = {
+            'xy': pos,
+            'text': self.value,
+            'fill': (0, 0, 0, 255),
+            'font': font,
+            'anchor': 'mm'
+        }
+        draw.text(**kwargs)
+        return img
+
+    def _generate_barcode_image(self, maxlen_px: Optional[int]) -> Image:
+        self.mod_width_px: int
+        if maxlen_px is None:
+            self.mod_width_px = 1
+        else:
+            # 11 quiet modules on each end
+            self.mod_width_px = floor(self.maxlen_px / (self.num_modules + 22))
+        logger.debug('Module width: %spx', self.mod_width_px)
         self.writer: ImageWriter = ImageWriter(format='PNG')
         logger.debug('Writing image at %d DPI', self.DPI)
         self.writer.dpi = self.DPI
         writer_opts: Dict = self._writer_opts()
-        writer_opts['font_path'] = font_filename
-        writer_opts['write_text'] =  show_text
         logger.debug('Setting writer options: %s', writer_opts)
         self.writer.set_options(writer_opts)
         logger.debug('Generating barcode image')
         self.barcode: Barcode = self.barcode_cls(self.value, writer=self.writer)
-        # used for width
-        # code = self.barcode.build()
-        # modules_per_line: int = len(code[0])
-        self._image: Image = self.barcode.render(writer_options=writer_opts)
-        logger.info(
-            'Generated barcode image of %spx wide x %spx high',
-            self._image.width, self._image.height
+        return self._white_to_transparent(
+            self.barcode.render(writer_options=writer_opts)
         )
+
+    def _get_num_modules(self) -> int:
+        writer: ImageWriter = ImageWriter(format='PNG')
+        writer.dpi = self.DPI
+        writer_opts: Dict = dict(self.barcode_cls.default_writer_options)
+        writer_opts['module_width'] = self.px2mm(1)
+        writer_opts['quiet_zone'] = 0
+        writer.set_options(writer_opts)
+        barcode: Barcode = self.barcode_cls(self.value, writer=writer)
+        _image: Image = barcode.render(writer_options=writer_opts)
+        logger.debug(
+            'Minimum barcode width (1 module == 1 px): %s', _image.width
+        )
+        return _image.width
 
     def _get_fonts(
         self, font_file: str = 'DejaVuSans.ttf', min_size: int = 4,
@@ -133,8 +218,8 @@ class BarcodeLabelGenerator:
                 break
         last_width = ceil(last_width)
         logger.debug(
-            'Font size %d is largest to fit; resulting width: %dpx',
-            last, last_width
+            'Font size %d is largest to fit; resulting width: %dpx; height: '
+            '%dpx', last, last_width, last_height
         )
         return self.fonts[last], last_width, last_height
 
@@ -153,36 +238,14 @@ class BarcodeLabelGenerator:
 
     def _writer_opts(self) -> Dict:
         result: Dict = dict(self.barcode_cls.default_writer_options)
-        height_opts: Dict = self._opts_for_heights()
-        logger.debug('Options for height: %s', height_opts)
-        result.update(height_opts)
-        return result
-
-    def _opts_for_heights(self) -> Dict:
-        # there's a 2mm hard-coded unusable area
-        usable_px: float = self.height_px - self.mm2px(2)
-        logger.debug('Usable height: %spx', usable_px)
-        if not self.show_text:
-            return {'module_height': self.px2mm(usable_px)}
-        # else we're showing text; a bit more complicated
-        # break usable height into sixths
-        unit: float = usable_px / 6
-        logger.debug('Height units (sixths): %spx', unit)
-        # 3/6 for barcode, 1/6 for spacing, 2/6 for text
-        font: ImageFont.FreeTypeFont
-        font_width: int
-        font_height: int
-        font, font_width, font_height = self._fit_text_to_box(int(unit * 2))
-        font_size: float = font.size
-        result = {
-            "module_height": self.px2mm(unit * 3),
-            # python-barcode expects the font size to be specified (incorrectly)
-            # in pixels
-            "font_size": self.px2mm(self.mm2pt(font_size)),
-            # this is the distance from the BOTTOM of the barcode to the
-            # BOTTOM of the text
-            "text_distance": self.px2mm(unit)
-        }
+        result['font_path'] = self.font_filename
+        result['write_text'] = False
+        result['module_width'] = self.px2mm(self.mod_width_px)
+        result['quiet_zone'] = self.px2mm(11)
+        if self.show_text:
+            result['module_height'] = self.px2mm(floor(self.height_px / 2))
+        else:
+            result['module_height'] = self.px2mm(self.height_px)
         return result
 
     def save(self, filename: str):
