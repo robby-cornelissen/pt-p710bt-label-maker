@@ -58,8 +58,13 @@ class BarcodeLabelGenerator:
             maxlen_px, show_text
         )
         self.num_modules: int = self._get_num_modules()
-        if not self.maxlen_px:
-            self.maxlen_px = self.num_modules + 22
+        self.mod_width_px: int
+        if maxlen_px is None:
+            self.mod_width_px = 2  # minimum reliable module width is 2px
+        else:
+            # 11 quiet modules on each end
+            self.mod_width_px = floor(self.maxlen_px / (self.num_modules + 22))
+        logger.debug('Module width: %spx', self.mod_width_px)
         self._barcode_image: Image = self._generate_barcode_image(
             self.maxlen_px
         )
@@ -127,13 +132,6 @@ class BarcodeLabelGenerator:
         return img
 
     def _generate_barcode_image(self, maxlen_px: Optional[int]) -> Image:
-        self.mod_width_px: int
-        if maxlen_px is None:
-            self.mod_width_px = 1
-        else:
-            # 11 quiet modules on each end
-            self.mod_width_px = floor(self.maxlen_px / (self.num_modules + 22))
-        logger.debug('Module width: %spx', self.mod_width_px)
         self.writer: ImageWriter = ImageWriter(format='PNG')
         logger.debug('Writing image at %d DPI', self.DPI)
         self.writer.dpi = self.DPI
