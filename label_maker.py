@@ -307,7 +307,7 @@ def main(*args):
 
     image_path = args[1]
     bt_address = args[2]
-    bt_channel = args[3] if len(args) > 3 else 1
+    bt_channel = int(args[3]) if len(args) > 3 else 1
 
     make_label(image_path, bt_address, bt_channel)
 
