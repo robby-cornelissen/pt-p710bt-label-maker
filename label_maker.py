@@ -257,7 +257,7 @@ def handle_status_information(status_information):
         print("--------------")
 
         error_information_1 = ErrorInformation1(status_information[STATUS_OFFSET_ERROR_INFORMATION_1])
-        error_information_2 = ErrorInformation1(status_information[STATUS_OFFSET_ERROR_INFORMATION_2])
+        error_information_2 = ErrorInformation2(status_information[STATUS_OFFSET_ERROR_INFORMATION_2])
 
         print("Error information 1: %s" % ", ".join([f.name for f in ErrorInformation1 if f in error_information_1]))
         print("Error information 2: %s" % ", ".join([f.name for f in ErrorInformation2 if f in error_information_2]))
