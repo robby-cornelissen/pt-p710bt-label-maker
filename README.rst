@@ -42,6 +42,7 @@ To create the udev rule, create a file (e.g. ``/etc/udev/rules.d/99-brother-pt-p
 ::
 
     # prevent usblb driver from binding Brother PT-P710BT label printer
+    ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", TAG-="systemd", ENV{SYSTEMD_WANTS}=""
     ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", RUN="/bin/sh -c '/bin/echo -n $kernel:1.0 > /sys/bus/usb/drivers/usblp/unbind'"
 
 Then, run ``udevadm control --reload-rules`` to load the new rule and try plugging the printer in.
