@@ -21,7 +21,7 @@ def rasterize(encoded_image_data):
 
             buffer += RASTER_COMMAND
             buffer += len(packed_chunk).to_bytes(2, "little")
-            buffer += packbits.encode(chunk)
+            buffer += packed_chunk
         
         yield buffer
 
