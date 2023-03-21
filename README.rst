@@ -44,6 +44,7 @@ To create the udev rule, create a file (e.g. ``/etc/udev/rules.d/99-brother-pt-p
     # prevent usblb driver from binding Brother PT-P710BT label printer
     ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", TAG-="systemd", ENV{SYSTEMD_WANTS}=""
     ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", RUN="/bin/sh -c '/bin/echo -n $kernel:1.0 > /sys/bus/usb/drivers/usblp/unbind'"
+    ACTION=="add", ATTR{idVendor}=="04f9", ATTR{idProduct}=="20af", OWNER="YourUsername", GROUP="YourGroup"
 
 Then, run ``udevadm control --reload-rules`` to load the new rule and try plugging the printer in.
 
@@ -123,7 +124,8 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
 ::
 
     $ pt-label-maker -h
-    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-r | -R] [-f FONT_FILENAME] [-a {center,left,right}]
+    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-r | -R]
+                          [-f FONT_FILENAME] [-a {center,left,right}]
                           LABEL_TEXT [LABEL_TEXT ...]
 
     Brother PT-P710BT Label Maker
@@ -144,7 +146,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       -T {24,18,12,9,6,4}, --tape-mm {24,18,12,9,6,4}
                             Width of tape in mm. Use 4 for 3.5mm tape. Default: 24
       -s, --save-only       Save generates image to current directory and exit
-      --filename FILENAME   Filename to save image to; default: 20220810T164802.png
+      --filename FILENAME   Filename to save image to; default: 20230321T145731.png
       -P, --preview         Preview image after generating and ask if it should be printed
       --maxlen-px MAXLEN_PX
                             Maximum label length in pixels
@@ -155,7 +157,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       -r, --rotate          Rotate text 90°, printing once at start of label. Use the --maxlen options to set label length.
       -R, --rotate-repeat   Rotate text 90° and print repeatedly along length of label. Use the --maxlen options to set label length.
       -f FONT_FILENAME, --font-filename FONT_FILENAME
-                            Font filename; Default: DejaVuSans.ttf
+                            Font filename; Default: DejaVuSans.ttf (default taken from PT_FONT_FILE env var if set)
       -a {center,left,right}, --align {center,left,right}
                             Text alignment; default: center
 
@@ -167,7 +169,7 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **--maxlen-px** / **--maxlen-inches** / **--maxlen-mm** - These options, mutually exclusive, allow specifying a maximum label length which the text will be fit to. Length can be specified in pixels (px), inches, or millimeters (mm), respectively. The PT-P710BT prints at 180 pixels per inch (PPI).
 * **-r** / **--rotate** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed once along the leading edge of the label. Label length will be determined by the ``--maxlen`` arguments.
 * **-R** / **--rotate-repeat** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed repeated along the length of the label, as many times as will fit with the default line spacing of the font. Label length will be determined by the ``--maxlen`` arguments. This option replicates a standard cable wrap label (for average Cat6 cable, maxlen should be 1.4 inches).
-* **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__.
+* **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__. The default value of ``DejaVuSans.ttf`` can be overridden with the ``PT_FONT_FILE`` environment variable.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
 
 Usage as a Library

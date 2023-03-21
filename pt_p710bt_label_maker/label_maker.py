@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 import logging
 from typing import Optional, Tuple, Dict, Any, List, Literal
@@ -304,9 +305,11 @@ def main():
         help='Rotate text 90° and print repeatedly along length of label. Use '
              'the --maxlen options to set label length.'
     )
+    def_font: str = os.environ.get('PT_FONT_FILE', 'DejaVuSans.ttf')
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
-                   action='store', default='DejaVuSans.ttf',
-                   help='Font filename; Default: DejaVuSans.ttf')
+                   action='store', default=def_font,
+                   help=f'Font filename; Default: {def_font} ('
+                        'default taken from PT_FONT_FILE env var if set)')
     p.add_argument('-a', '--align', dest='alignment', type=str, action='store',
                    choices=Alignment.__args__, default='center',
                    help='Text alignment; default: center')
