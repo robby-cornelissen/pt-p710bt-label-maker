@@ -123,9 +123,8 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
 
 ::
 
-    $ pt-label-maker -h
-    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U) [-T {24,18,12,9,6,4}] [-s] [--filename FILENAME] [-P] [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [-r | -R]
-                          [-f FONT_FILENAME] [-a {center,left,right}]
+    usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U | -L) [-T {24,18,12,9,6,4}] [--lp-dpi LP_DPI] [--lp-width-px LP_WIDTH_PX] [--lp-options LP_OPTIONS] [-s] [--filename FILENAME] [-P]
+                          [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [--max-font-size MAX_FONT_SIZE] [-r | -R] [-f FONT_FILENAME] [-a {center,left,right}]
                           LABEL_TEXT [LABEL_TEXT ...]
 
     Brother PT-P710BT Label Maker
@@ -143,10 +142,16 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       -B BT_ADDRESS, --bluetooth-address BT_ADDRESS
                             BlueTooth device (MAC) address to connect to; must already be paired
       -U, --usb             Use USB instead of bluetooth
+      -L, --lp              Instead of printing to PT-P710 via BT or USB, print to a regular lp printer, i.e. for testing or for CUPS-supported label printers
       -T {24,18,12,9,6,4}, --tape-mm {24,18,12,9,6,4}
                             Width of tape in mm. Use 4 for 3.5mm tape. Default: 24
+      --lp-dpi LP_DPI       DPI for lp printing; defaults to 203dpi
+      --lp-width-px LP_WIDTH_PX
+                            Width in pixels for printing via LP; default 203
+      --lp-options LP_OPTIONS
+                            Options to pass to lp when printing
       -s, --save-only       Save generates image to current directory and exit
-      --filename FILENAME   Filename to save image to; default: 20230321T145731.png
+      --filename FILENAME   Filename to save image to; default: 20230526T072856.png
       -P, --preview         Preview image after generating and ask if it should be printed
       --maxlen-px MAXLEN_PX
                             Maximum label length in pixels
@@ -154,10 +159,12 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
                             Maximum label length in inches
       --maxlen-mm MAXLEN_MM
                             Maximum label length in mm
+      --max-font-size MAX_FONT_SIZE
+                            Maximum font size to use
       -r, --rotate          Rotate text 90°, printing once at start of label. Use the --maxlen options to set label length.
       -R, --rotate-repeat   Rotate text 90° and print repeatedly along length of label. Use the --maxlen options to set label length.
       -f FONT_FILENAME, --font-filename FONT_FILENAME
-                            Font filename; Default: DejaVuSans.ttf (default taken from PT_FONT_FILE env var if set)
+                            Font filename; Default: /usr/local/share/fonts/ttf/Overpass/Overpass_Regular.ttf (default taken from PT_FONT_FILE env var if set)
       -a {center,left,right}, --align {center,left,right}
                             Text alignment; default: center
 
@@ -171,6 +178,11 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **-R** / **--rotate-repeat** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed repeated along the length of the label, as many times as will fit with the default line spacing of the font. Label length will be determined by the ``--maxlen`` arguments. This option replicates a standard cable wrap label (for average Cat6 cable, maxlen should be 1.4 inches).
 * **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__. The default value of ``DejaVuSans.ttf`` can be overridden with the ``PT_FONT_FILE`` environment variable.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
+
+Printing With lp
+^^^^^^^^^^^^^^^^
+
+With the ``-L`` / ``--lp`` option, it's possible to print rendered labels to a standard printer via ``lp`` instead of printing to the PT-P710. This is useful for testing layout, or for printing to generic label printers that are supported via CUPS. In this case the ``-T`` / ``--tape-mm`` option is ignored and the ``--lp-dpi``, ``--lp-width-px``, and ``--lp-options`` options should be used.
 
 Usage as a Library
 ------------------

@@ -7,8 +7,8 @@ from datetime import datetime
 from math import ceil
 from io import BytesIO
 import shlex
-from tempfile import NamedTemporaryFile
-from shutil import which
+from tempfile import mkdtemp
+from shutil import which, rmtree
 import subprocess
 
 from PIL import Image, ImageDraw, ImageFont
@@ -37,7 +37,7 @@ class LabelImageGenerator:
         self, text: str, height_px: int, maxlen_px: Optional[int] = None,
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
         text_align: Alignment = 'center', rotate: bool = False,
-        rotate_repeat: bool = False
+        rotate_repeat: bool = False, max_font_size: Optional[int] = None
     ):
         self.text: str = text
         # for height, see media_info.TAPE_MM_TO_PX
@@ -47,8 +47,11 @@ class LabelImageGenerator:
             'Initializing LabelImageGenerator text="%s", height_px=%d',
             self.text, self.height_px
         )
+        kwargs = {'font_file': font_filename}
+        if max_font_size:
+            kwargs['max_size'] = max_font_size
         self.fonts: Dict[int, ImageFont.FreeTypeFont] = self._get_fonts(
-            font_file=font_filename
+            **kwargs
         )
         logger.debug('Loaded %d font options', len(self.fonts))
         self.text_anchor: str = 'mm'
@@ -280,28 +283,32 @@ class LpPrinter:
             self.lp_options = shlex.split(lp_options)
 
     def print_images(self, images: List[BytesIO], num_copies: int = 1):
-        fnames: List[str] = []
-        f: NamedTemporaryFile
-        for i in images:
-            f = NamedTemporaryFile()
-            logger.debug('Writing image to: %s', f.name)
-            f.write(i.getvalue())
-            fnames.append(f.name)
-        cmd = [which('lp')] + self.lp_options
-        if num_copies > 1:
-            cmd.extend(['-n', str(num_copies)])
-        cmd.extend(fnames)
-        logger.debug('Calling: %s', ' '.join(cmd))
-        p: subprocess.CompletedProcess = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        logger.debug(
-            'Command exited %d: %s', p.returncode, p.stdout
-        )
-        if p.returncode != 0:
-            raise RuntimeError(
-                f'ERROR: lp command exited {p.returncode}: {p.stdout}'
+        tmpdir: str = mkdtemp()
+        try:
+            fpaths: List[str] = []
+            for idx, i in enumerate(images):
+                fname = os.path.join(tmpdir, f'{idx}.png')
+                fpaths.append(fname)
+                logger.debug('Writing image to: %s', fname)
+                with open(fname, 'wb') as fh:
+                    fh.write(i.getvalue())
+            cmd = [which('lp')] + self.lp_options
+            if num_copies > 1:
+                cmd.extend(['-n', str(num_copies)])
+            cmd.extend(fpaths)
+            logger.debug('Calling: %s', ' '.join(cmd))
+            p: subprocess.CompletedProcess = subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
+            logger.debug(
+                'Command exited %d: %s', p.returncode, p.stdout
+            )
+            if p.returncode != 0:
+                raise RuntimeError(
+                    f'ERROR: lp command exited {p.returncode}: {p.stdout}'
+                )
+        finally:
+            rmtree(tmpdir)
 
 
 def main():
@@ -310,11 +317,6 @@ def main():
         description='Brother PT-P710BT Label Maker'
     )
     add_printer_args(p)
-    p.add_argument(
-        '-L', '--lp', dest='lp', action='store_true', default=False,
-        help='Instead of printing to PT-P710 via BT or USB, print to a regular '
-             'lp printer, i.e. for testing or for CUPS-supported label printers'
-    )
     p.add_argument(
         '--lp-dpi', dest='lp_dpi', action='store', type=int, default=203,
         help='DPI for lp printing; defaults to 203dpi'
@@ -347,6 +349,10 @@ def main():
                         type=float, help='Maximum label length in inches')
     maxlen.add_argument('--maxlen-mm', dest='maxlen_mm', action='store',
                         type=float, help='Maximum label length in mm')
+    p.add_argument(
+        '--max-font-size', dest='max_font_size', action='store', type=int,
+        default=None, help='Maximum font size to use'
+    )
     rotrep = p.add_mutually_exclusive_group()
     rotrep.add_argument(
         '-r', '--rotate', dest='rotate', action='store_true', default=False,
@@ -390,7 +396,8 @@ def main():
     kwargs = dict(
         height_px=height, maxlen_px=args.maxlen_px,
         font_filename=args.font_filename, text_align=args.alignment,
-        rotate=args.rotate, rotate_repeat=args.rotate_repeat
+        rotate=args.rotate, rotate_repeat=args.rotate_repeat,
+        max_font_size=args.max_font_size
     )
     if args.lp:
         kwargs['padding_right'] = 0
