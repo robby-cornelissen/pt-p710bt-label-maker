@@ -59,6 +59,11 @@ def add_printer_args(p: ArgumentParser):
         '-U', '--usb', dest='usb', action='store_true', default=False,
         help='Use USB instead of bluetooth'
     )
+    usb_or_bt.add_argument(
+        '-L', '--lp', dest='lp', action='store_true', default=False,
+        help='Instead of printing to PT-P710 via BT or USB, print to a regular '
+             'lp printer, i.e. for testing or for CUPS-supported label printers'
+    )
     p.add_argument(
         '-T', '--tape-mm', dest='tape_mm', action='store', type=int,
         default=24, choices=TAPE_MM_TO_PX.keys(),

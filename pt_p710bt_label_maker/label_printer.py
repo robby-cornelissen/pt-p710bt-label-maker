@@ -197,6 +197,11 @@ def main():
         nargs='+'
     )
     args = p.parse_args(sys.argv[1:])
+    if args.lp:
+        raise RuntimeError(
+            'ERROR: lp does not make any sense for pt-label-printer; '
+            'just use lp directly'
+        )
     # set logging level
     if args.verbose:
         set_log_debug(logger)
