@@ -6,6 +6,10 @@ from typing import Optional, Tuple, Dict, Any, List, Literal
 from datetime import datetime
 from math import ceil
 from io import BytesIO
+import shlex
+from tempfile import NamedTemporaryFile
+from shutil import which
+import subprocess
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -168,7 +172,7 @@ class LabelImageGenerator:
             (255, 255, 255, 0)
         )
         draw: ImageDraw = ImageDraw.Draw(textimg)
-        pos: Tuple[int, int] = (self.height_px / 2, self.text_height_px / 2)
+        pos: Tuple[float, float] = (self.height_px / 2, self.text_height_px / 2)
         kwargs: Dict[str, Any] = {
             'xy': pos,
             'text': self.text,
@@ -235,7 +239,7 @@ class LabelImageGenerator:
             (255, 255, 255, 0)
         )
         draw: ImageDraw = ImageDraw.Draw(img)
-        pos: Tuple[int, int] = (self.width_px / 2, self.height_px / 2)
+        pos: Tuple[float, float] = (self.width_px / 2, self.height_px / 2)
         kwargs: Dict[str, Any] = {
             'xy': pos,
             'text': self.text,
@@ -268,12 +272,62 @@ class LabelImageGenerator:
         return i
 
 
+class LpPrinter:
+
+    def __init__(self, lp_options: str):
+        self.lp_options: List[str] = []
+        if lp_options != '':
+            self.lp_options = shlex.split(lp_options)
+
+    def print_images(self, images: List[BytesIO], num_copies: int = 1):
+        fnames: List[str] = []
+        f: NamedTemporaryFile
+        for i in images:
+            f = NamedTemporaryFile()
+            logger.debug('Writing image to: %s', f.name)
+            f.write(i.getvalue())
+            fnames.append(f.name)
+        cmd = [which('lp')] + self.lp_options
+        if num_copies > 1:
+            cmd.extend(['-n', str(num_copies)])
+        cmd.extend(fnames)
+        logger.debug('Calling: %s', ' '.join(cmd))
+        p: subprocess.CompletedProcess = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        logger.debug(
+            'Command exited %d: %s', p.returncode, p.stdout
+        )
+        if p.returncode != 0:
+            raise RuntimeError(
+                f'ERROR: lp command exited {p.returncode}: {p.stdout}'
+            )
+
+
 def main():
     fname: str = datetime.now().strftime('%Y%m%dT%H%M%S') + '.png'
     p = argparse.ArgumentParser(
         description='Brother PT-P710BT Label Maker'
     )
     add_printer_args(p)
+    p.add_argument(
+        '-L', '--lp', dest='lp', action='store_true', default=False,
+        help='Instead of printing to PT-P710 via BT or USB, print to a regular '
+             'lp printer, i.e. for testing or for CUPS-supported label printers'
+    )
+    p.add_argument(
+        '--lp-dpi', dest='lp_dpi', action='store', type=int, default=203,
+        help='DPI for lp printing; defaults to 203dpi'
+    )
+    p.add_argument(
+        '--lp-width-px', dest='lp_width_px', action='store', type=float,
+        default=203,
+        help='Width in pixels for printing via LP; default 203'
+    )
+    p.add_argument(
+        '--lp-options', dest='lp_options', action='store', type=str, default='',
+        help='Options to pass to lp when printing'
+    )
     p.add_argument(
         '-s', '--save-only', dest='save_only', action='store_true',
         default=False, help='Save generates image to current directory and exit'
@@ -318,22 +372,30 @@ def main():
         nargs='+'
     )
     args = p.parse_args(sys.argv[1:])
+    dpi: int = LabelImageGenerator.DPI
+    height: int = TAPE_MM_TO_PX[args.tape_mm]
+    if args.lp:
+        dpi = args.lp_dpi
+        height = args.lp_width_px
     if args.maxlen_in:
-        args.maxlen_px = args.maxlen_in * LabelImageGenerator.DPI
+        args.maxlen_px = args.maxlen_in * dpi
     elif args.maxlen_mm:
-        args.maxlen_px = (args.maxlen_mm / 25.4) * LabelImageGenerator.DPI
+        args.maxlen_px = (args.maxlen_mm / 25.4) * dpi
     # set logging level
     if args.verbose:
         set_log_debug(logger)
     else:
         set_log_info(logger)
     images: List[BytesIO] = []
+    kwargs = dict(
+        height_px=height, maxlen_px=args.maxlen_px,
+        font_filename=args.font_filename, text_align=args.alignment,
+        rotate=args.rotate, rotate_repeat=args.rotate_repeat
+    )
+    if args.lp:
+        kwargs['padding_right'] = 0
     for i in args.LABEL_TEXT:
-        g = LabelImageGenerator(
-            i, height_px=TAPE_MM_TO_PX[args.tape_mm], maxlen_px=args.maxlen_px,
-            font_filename=args.font_filename, text_align=args.alignment,
-            rotate=args.rotate, rotate_repeat=args.rotate_repeat
-        )
+        g = LabelImageGenerator(i, **kwargs)
         if args.save_only:
             g.save(args.filename)
         if args.preview:
@@ -341,6 +403,10 @@ def main():
         images.append(g.file_obj)
     if args.save_only:
         raise SystemExit(0)
+    if args.lp:
+        return LpPrinter(args.lp_options).print_images(
+            images, num_copies=args.num_copies
+        )
     # Begin code copied from label_printer.py
     device: Connector
     if args.usb:
