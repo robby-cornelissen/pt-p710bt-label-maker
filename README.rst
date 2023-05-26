@@ -124,7 +124,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
 ::
 
     usage: pt-label-maker [-h] [-v] [-C BT_CHANNEL] [-c NUM_COPIES] (-B BT_ADDRESS | -U | -L) [-T {24,18,12,9,6,4}] [--lp-dpi LP_DPI] [--lp-width-px LP_WIDTH_PX] [--lp-options LP_OPTIONS] [-s] [--filename FILENAME] [-P]
-                          [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [--max-font-size MAX_FONT_SIZE] [-r | -R] [-f FONT_FILENAME] [-a {center,left,right}]
+                          [--maxlen-px MAXLEN_PX | --maxlen-inches MAXLEN_IN | --maxlen-mm MAXLEN_MM] [--max-font-size MAX_FONT_SIZE] [-r | -R | -p] [-f FONT_FILENAME] [-a {center,left,right}]
                           LABEL_TEXT [LABEL_TEXT ...]
 
     Brother PT-P710BT Label Maker
@@ -151,7 +151,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       --lp-options LP_OPTIONS
                             Options to pass to lp when printing
       -s, --save-only       Save generates image to current directory and exit
-      --filename FILENAME   Filename to save image to; default: 20230526T072856.png
+      --filename FILENAME   Filename to save image to; default: 20230526T094723.png
       -P, --preview         Preview image after generating and ask if it should be printed
       --maxlen-px MAXLEN_PX
                             Maximum label length in pixels
@@ -163,6 +163,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
                             Maximum font size to use
       -r, --rotate          Rotate text 90°, printing once at start of label. Use the --maxlen options to set label length.
       -R, --rotate-repeat   Rotate text 90° and print repeatedly along length of label. Use the --maxlen options to set label length.
+      -p, --patch-panel     Generate a patch panel label, for ports that are spaced maxlen on center and as many ports as arguments are specified
       -f FONT_FILENAME, --font-filename FONT_FILENAME
                             Font filename; Default: /usr/local/share/fonts/ttf/Overpass/Overpass_Regular.ttf (default taken from PT_FONT_FILE env var if set)
       -a {center,left,right}, --align {center,left,right}
@@ -176,6 +177,7 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **--maxlen-px** / **--maxlen-inches** / **--maxlen-mm** - These options, mutually exclusive, allow specifying a maximum label length which the text will be fit to. Length can be specified in pixels (px), inches, or millimeters (mm), respectively. The PT-P710BT prints at 180 pixels per inch (PPI).
 * **-r** / **--rotate** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed once along the leading edge of the label. Label length will be determined by the ``--maxlen`` arguments.
 * **-R** / **--rotate-repeat** - Print the specified text rotated 90°, as large as will fit across the width of the label. Text is printed repeated along the length of the label, as many times as will fit with the default line spacing of the font. Label length will be determined by the ``--maxlen`` arguments. This option replicates a standard cable wrap label (for average Cat6 cable, maxlen should be 1.4 inches).
+* **-p** / **--patch-panel** - Print a single long patch panel-style label, where each ``LABEL_TEXT`` argument is in a maxlen-length block, separated by vertical lines.
 * **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__. The default value of ``DejaVuSans.ttf`` can be overridden with the ``PT_FONT_FILE`` environment variable.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
 

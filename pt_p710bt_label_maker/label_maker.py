@@ -94,6 +94,10 @@ class LabelImageGenerator:
         else:
             self._image = self._generate()
 
+    @property
+    def image(self) -> Image:
+        return self._image
+
     def _get_fonts(
         self, font_file: str = 'DejaVuSans.ttf', min_size: int = 4,
         max_size: int = 144, size_step: int = 2
@@ -311,6 +315,61 @@ class LpPrinter:
             rmtree(tmpdir)
 
 
+def patch_panel_label_generator(
+    generator_kwargs: dict, texts: List[str],
+    save_filename: Optional[str] = None, preview: bool = False
+) -> Image:
+    port_spacing_px: int = int(generator_kwargs['maxlen_px'])
+    height: int = generator_kwargs['height_px']
+    offset: int = 0
+    generator_kwargs['maxlen_px'] -= 4  # 1px line and 1px space at each end
+    logger.debug(
+        'Patch panel generator; port_spacing_px=%d height=%d '
+        'per-port image maxlen_px=%d', port_spacing_px, height,
+        generator_kwargs['maxlen_px']
+    )
+    # relevant args are height_px and maxlen_px
+    img: Image = Image.new(
+        'RGBA',
+        (port_spacing_px * len(texts), height),
+        (255, 255, 255, 0)
+    )
+    logger.debug(
+        'Generated master image, width=%d height=%d', img.width, img.height
+    )
+    draw: ImageDraw.Draw = ImageDraw.Draw(img)
+    item: LabelImageGenerator
+    for idx, text in enumerate(texts):
+        logger.debug('Generating text for: %s', text)
+        item = LabelImageGenerator(text, **generator_kwargs)
+        logger.debug(
+            'Generated image has width=%d height=%d', item.image.width,
+            item.image.height
+        )
+        x = offset + 2
+        if item.image.width < generator_kwargs['maxlen_px']:
+            x += int((port_spacing_px - item.image.width) / 2)
+        logger.debug(
+            'Paste generated image in master with top left corner at (%d, %d)',
+            x, 0
+        )
+        img.paste(item.image, box=(x, 0))
+        draw.line(
+            (offset, 0, offset, height),
+            fill=255, width=1
+        )
+        if idx != len(texts) - 1:
+            draw.line(
+                (
+                    offset + (port_spacing_px - 1), 0,
+                    offset + (port_spacing_px - 1), height
+                ),
+                fill="black", width=1
+            )
+        offset += port_spacing_px
+    return img
+
+
 def main():
     fname: str = datetime.now().strftime('%Y%m%dT%H%M%S') + '.png'
     p = argparse.ArgumentParser(
@@ -365,6 +424,12 @@ def main():
         help='Rotate text 90° and print repeatedly along length of label. Use '
              'the --maxlen options to set label length.'
     )
+    rotrep.add_argument(
+        '-p', '--patch-panel', dest='patch_panel', action='store_true',
+        default=False,
+        help='Generate a patch panel label, for ports that are spaced '
+             'maxlen on center and as many ports as arguments are specified'
+    )
     def_font: str = os.environ.get('PT_FONT_FILE', 'DejaVuSans.ttf')
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
                    action='store', default=def_font,
@@ -401,13 +466,29 @@ def main():
     )
     if args.lp:
         kwargs['padding_right'] = 0
-    for i in args.LABEL_TEXT:
-        g = LabelImageGenerator(i, **kwargs)
+    if args.patch_panel:
+        img = patch_panel_label_generator(
+            kwargs, args.LABEL_TEXT, preview=args.preview,
+            save_filename=args.filename if args.save_only else None
+        )
         if args.save_only:
-            g.save(args.filename)
+            img.save(args.filename, format='PNG')
         if args.preview:
-            g.show()
-        images.append(g.file_obj)
+            img.show()
+            if input('Print this image? [y|N]').strip() not in ['y', 'Y']:
+                raise SystemExit(1)
+        i: BytesIO = BytesIO()
+        img.save(i, format='PNG')
+        i.seek(0)
+        images.append(i)
+    else:
+        for i in args.LABEL_TEXT:
+            g = LabelImageGenerator(i, **kwargs)
+            if args.save_only:
+                g.save(args.filename)
+            if args.preview:
+                g.show()
+            images.append(g.file_obj)
     if args.save_only:
         raise SystemExit(0)
     if args.lp:
