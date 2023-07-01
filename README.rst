@@ -164,6 +164,7 @@ The ``pt-label-maker`` entrypoint will render specified text as a PNG image and 
       -r, --rotate          Rotate text 90°, printing once at start of label. Use the --maxlen options to set label length.
       -R, --rotate-repeat   Rotate text 90° and print repeatedly along length of label. Use the --maxlen options to set label length.
       -p, --patch-panel     Generate a patch panel label, for ports that are spaced maxlen on center and as many ports as arguments are specified
+      -W, --wrap            Attempt to automatically word-wrap text for best fit on label
       -f FONT_FILENAME, --font-filename FONT_FILENAME
                             Font filename; Default: /usr/local/share/fonts/ttf/Overpass/Overpass_Regular.ttf (default taken from PT_FONT_FILE env var if set)
       -a {center,left,right}, --align {center,left,right}
@@ -180,6 +181,7 @@ This command accepts the same Bluetooth/USB and NUM_COPIES options as ``pt-label
 * **-p** / **--patch-panel** - Print a single long patch panel-style label, where each ``LABEL_TEXT`` argument is in a maxlen-length block, separated by vertical lines.
 * **-f** / **--font-filename** - The filename of the TrueType/OpenType font to render text in. This file must already be installed in your system font paths. This parameter is passed directly to Pillow's `ImageFont.truetype() method <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype>`__. The default value of ``DejaVuSans.ttf`` can be overridden with the ``PT_FONT_FILE`` environment variable.
 * **-a** / **--align** - This sets the text alignment within the space of the label. Valid values are ``center`` (default), ``left``, or ``right``.
+* **-W** / **--wrap** - Automatically word-wrap text for best fit using the largest possible font. Uses the awesome `atomicparade/pil_autowrap <https://github.com/atomicparade/pil_autowrap>`__ library.
 
 Printing With lp
 ^^^^^^^^^^^^^^^^

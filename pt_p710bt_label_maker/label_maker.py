@@ -20,6 +20,7 @@ from pt_p710bt_label_maker.label_printer import (
     Connector, UsbConnector, BluetoothConnector, PtP710LabelPrinter
 )
 from pt_p710bt_label_maker.media_info import TAPE_MM_TO_PX
+from pt_p710bt_label_maker.pil_autowrap import fit_text
 
 Alignment = Literal["center", "left", "right"]
 
@@ -37,7 +38,8 @@ class LabelImageGenerator:
         self, text: str, height_px: int, maxlen_px: Optional[int] = None,
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
         text_align: Alignment = 'center', rotate: bool = False,
-        rotate_repeat: bool = False, max_font_size: Optional[int] = None
+        rotate_repeat: bool = False, max_font_size: Optional[int] = None,
+        wrap: bool = False
     ):
         self.text: str = text
         # for height, see media_info.TAPE_MM_TO_PX
@@ -58,6 +60,7 @@ class LabelImageGenerator:
         self.text_align: Alignment = text_align
         self.rotate: bool = rotate
         self.rotate_repeat: bool = rotate_repeat
+        self.wrap: bool = wrap
         self.font: ImageFont.FreeTypeFont
         self.width_px: int
         #: when printing rotated or rotated repeated, this is the width of one
@@ -65,6 +68,10 @@ class LabelImageGenerator:
         self.text_width_px: int = 0
         self.text_height_px: int = 0
         if self.rotate or self.rotate_repeat:
+            if self.wrap:
+                raise NotImplementedError(
+                    'ERROR: Text wrap is not implemented for rotated text.'
+                )
             self.width_px = ceil(maxlen_px)
             # swap height and width to find what will fit when rotated
             self.font, self.text_width_px, self.text_height_px = self._fit_text_to_box(
@@ -75,6 +82,23 @@ class LabelImageGenerator:
                 ' resulting text height is %dpx and width is %dpx.',
                 maxlen_px, self.height_px, self.font.size, self.text_height_px,
                 self.text_width_px
+            )
+        elif self.wrap:
+            self.font, self.text = fit_text(
+                self.fonts[max(self.fonts.keys())], self.text, maxlen_px,
+                self.height_px, max_iterations=100
+            )
+            img: Image = Image.new("RGB", (2, 2), (255, 255, 255))
+            draw: ImageDraw = ImageDraw.Draw(img)
+            self.width_px, height_px = self._get_text_dimensions(
+                self.font, draw, self.text
+            )
+            self.width_px = int(self.width_px)
+            logger.info(
+                'Wrapped text to fit in %dpx high x %spx wide; best fit is '
+                'font size %s resulting in text %spx wide wrapped as: %s',
+                self.height_px, maxlen_px, self.font.size, self.width_px,
+                self.text
             )
         else:
             self.font, self.width_px, _ = self._fit_text_to_box(
@@ -430,6 +454,10 @@ def main():
         help='Generate a patch panel label, for ports that are spaced '
              'maxlen on center and as many ports as arguments are specified'
     )
+    p.add_argument(
+        '-W', '--wrap', dest='wrap', action='store_true', default=False,
+        help='Attempt to automatically word-wrap text for best fit on label'
+    )
     def_font: str = os.environ.get('PT_FONT_FILE', 'DejaVuSans.ttf')
     p.add_argument('-f', '--font-filename', dest='font_filename', type=str,
                    action='store', default=def_font,
@@ -462,7 +490,7 @@ def main():
         height_px=height, maxlen_px=args.maxlen_px,
         font_filename=args.font_filename, text_align=args.alignment,
         rotate=args.rotate, rotate_repeat=args.rotate_repeat,
-        max_font_size=args.max_font_size
+        max_font_size=args.max_font_size, wrap=args.wrap
     )
     if args.lp:
         kwargs['padding_right'] = 0
