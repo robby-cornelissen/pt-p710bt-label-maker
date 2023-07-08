@@ -1,6 +1,5 @@
 packbits==0.6
 Pillow==9.5.0
--e git+ssh://git@github.com/jantman/pt-p710bt-label-maker.git@1f94282410da2d39eba828160e428ccf99978994#egg=pt_p710bt_label_maker
 PyBluez==0.30
 pypng==0.0.20
 python-barcode==0.14.0
