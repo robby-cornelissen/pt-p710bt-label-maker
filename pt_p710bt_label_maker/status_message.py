@@ -73,6 +73,7 @@ class ReplyToStatusRequest(StatusMessage):
         LAMINATED_TAPE = 0x01
         NON_LAMINATED_TAPE = 0x03
         HEAT_SHRINK_TUBE = 0x11
+        FLEXIBLE_ID_TAPE = 0x14
         INCOMPATIBLE_TAPE = 0xFF
 
     class TapeColor(IntEnum):
