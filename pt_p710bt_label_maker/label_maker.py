@@ -164,12 +164,12 @@ class LabelImageGenerator:
             '%s pixels wide', self.text, max_height, max_width
         )
         last: int = min(self.fonts.keys())
-        last_width: int = self._get_text_dimensions(
+        last_width: int = int(self._get_text_dimensions(
             self.fonts[last], draw, self.text
-        )[0]
-        last_height: int = self._get_text_dimensions(
+        )[0])
+        last_height: int = int(self._get_text_dimensions(
             self.fonts[last], draw, self.text
-        )[1]
+        )[1])
         for i in sorted(self.fonts.keys(), reverse=True):
             try:
                 w, h = self._get_text_dimensions(
@@ -184,7 +184,8 @@ class LabelImageGenerator:
                 last_width = w
                 last_height = h
                 break
-        last_width = ceil(last_width)
+        last_width = int(ceil(last_width))
+        last_height = int(last_height)
         logger.debug(
             'Font size %d is largest to fit; resulting width: %dpx',
             last, last_width
@@ -194,7 +195,7 @@ class LabelImageGenerator:
     def _generate_rotated(self) -> Image:
         # generate a temporary image containing the text, sized just to fit
         logger.debug(
-            'Generating temporary image for rotated text; %dpx x %dpx',
+            'Generating temporary image for rotated text; %spx x %spx',
             self.height_px, self.text_height_px
         )
         textimg: Image = Image.new(
