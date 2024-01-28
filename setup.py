@@ -52,7 +52,7 @@ requires = [
     # so we have to install from git.
     'pybluez @ git+https://github.com/pybluez/pybluez.git@07ebef044195331a48bbb90a3acb911922048ba0',
     'pillow>=9.2.0,<10.0.0',
-    'python-barcode>=0.14.0,<1.0.0'
+    'python-barcode==0.14.0'
 ]
 
 classifiers = [
