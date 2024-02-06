@@ -406,7 +406,7 @@ def main():
         help='DPI for lp printing; defaults to 203dpi'
     )
     p.add_argument(
-        '--lp-width-px', dest='lp_width_px', action='store', type=float,
+        '--lp-width-px', dest='lp_width_px', action='store', type=int,
         default=203,
         help='Width in pixels for printing via LP; default 203'
     )
