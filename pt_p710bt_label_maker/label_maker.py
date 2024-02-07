@@ -39,7 +39,7 @@ class LabelImageGenerator:
         font_filename: str = 'DejaVuSans.ttf', padding_right: int = 4,
         text_align: Alignment = 'center', rotate: bool = False,
         rotate_repeat: bool = False, max_font_size: Optional[int] = None,
-        wrap: bool = False
+        wrap: bool = False, fixed_len_px: Optional[int] = None
     ):
         self.text: str = text
         # for height, see media_info.TAPE_MM_TO_PX
@@ -117,6 +117,8 @@ class LabelImageGenerator:
             self._image = self._generate_rotated()
         else:
             self._image = self._generate()
+        if fixed_len_px:
+            self._image = self._center_in_width(self._image, fixed_len_px)
 
     @property
     def image(self) -> Image:
@@ -303,6 +305,18 @@ class LabelImageGenerator:
         i.seek(0)
         return i
 
+    def _center_in_width(self, img: Image, width_px: int) -> Image:
+        img_w, img_h = img.size
+        background: Image = Image.new(
+            'RGBA',
+            (width_px, img_h),
+            (255, 255, 255, 0)
+        )
+        bg_w, bg_h = background.size
+        offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
+        background.paste(img, offset)
+        return background
+
 
 class LpPrinter:
 
@@ -437,6 +451,10 @@ def main():
         '--max-font-size', dest='max_font_size', action='store', type=int,
         default=None, help='Maximum font size to use'
     )
+    p.add_argument(
+        '--fixed-len-px', dest='fixed_len_px', action='store', type=int,
+        default=None, help='Center text in fixed length image of this many pixels long'
+    )
     rotrep = p.add_mutually_exclusive_group()
     rotrep.add_argument(
         '-r', '--rotate', dest='rotate', action='store_true', default=False,
@@ -491,7 +509,8 @@ def main():
         height_px=height, maxlen_px=args.maxlen_px,
         font_filename=args.font_filename, text_align=args.alignment,
         rotate=args.rotate, rotate_repeat=args.rotate_repeat,
-        max_font_size=args.max_font_size, wrap=args.wrap
+        max_font_size=args.max_font_size, wrap=args.wrap,
+        fixed_len_px=args.fixed_len_px
     )
     if args.lp:
         kwargs['padding_right'] = 0
